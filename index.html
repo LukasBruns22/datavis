@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CPIII - Dashboard Prototype</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <header class="filters-container">
+            <h1>IMDb Dashboard</h1>
+            <p>Filter controls will go here...</p>
+        </header>
+
+        <main class="charts-grid">
+            
+            <div class="chart-container" id="network-container">
+                <h2>Actor-Genre Network</h2>
+                <img src="img/network-sketch.png" alt="Sketch of Actor-Genre Network">
+            </div>
+
+            <div class="chart-container" id="heatmap-container">
+                <h2>Rating Heatmap</h2>
+                <img src="img/heatmap-sketch.png" alt="Sketch of Rating Heatmap">
+            </div>
+
+            <div class="chart-container" id="sunburst-container">
+                <h2>Movie Picker Sunburst</h2>
+                </div>
+
+            <div class="chart-container" id="correlation-container">
+                <h2>Correlation Plot</h2>
+                <img src="img/correlation-sketch.png" alt="Sketch of Correlation Plot">
+            </div>
+
+        </main>
+    </div>
+
+    <script src="js/d3.min.js"></script>
+    <script src="js/main.js"></script>
+
+</body>
+</html>

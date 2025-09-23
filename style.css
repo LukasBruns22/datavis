@@ -1,0 +1,66 @@
+/* Basic page styling */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f0f2f5;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+}
+
+/* Main container for the whole dashboard */
+.dashboard-container {
+    max-width: 1400px;
+    margin: auto;
+}
+
+/* Header/Filters section styling */
+.filters-container {
+    background-color: #ffffff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.filters-container h1 {
+    margin: 0;
+    font-size: 1.5em;
+}
+
+/* This is the key part: The 2x2 Grid Layout */
+.charts-grid {
+    display: grid;
+    /* Create two equal-width columns */
+    grid-template-columns: 1fr 1fr;
+    /* Create two rows, each taking up half the available height */
+    grid-template-rows: 400px 400px; 
+    /* Add spacing between the charts */
+    gap: 20px;
+}
+
+/* Styling for each individual chart box */
+.chart-container {
+    background-color: #ffffff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-container h2 {
+    margin-top: 0;
+    font-size: 1.1em;
+    text-align: center;
+    color: #555;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+/* Styling for the placeholder images */
+.chart-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Scales the image to fit without stretching it */
+    opacity: 0.6; /* Makes it look like a watermark/placeholder */
+}
