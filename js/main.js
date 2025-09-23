@@ -1,21 +1,29 @@
 d3.json("data/02_CPI-31-Dataset.json").then(function(flatData) {
     
-    // --- 1. DATA FLATTENING & PREP ---
     const flattenedData = [];
     flatData.titles.forEach(movie => {
-        if (movie.genres && movie.genres.length > 0 && movie.runtimeMinutes && movie.averageRating) {
+        // This 'if' statement now includes the filter for movie/tvSeries
+        if (
+            (movie.titleType === 'movie' || movie.titleType === 'tvSeries') &&
+            movie.genres && movie.genres.length > 0 && 
+            movie.runtimeMinutes && 
+            movie.averageRating
+        ) {
             movie.genres.forEach(genre => {
                 flattenedData.push({
-                    genre: genre, year: movie.startYear, runtime: movie.runtimeMinutes,
-                    rating: movie.averageRating, title: movie.originalTitle
+                    type: movie.titleType,
+                    genre: genre,
+                    year: movie.startYear,
+                    runtime: movie.runtimeMinutes,
+                    rating: movie.averageRating,
+                    title: movie.originalTitle
                 });
             });
         }
     });
 
-    // --- 2. HIERARCHICAL TRANSFORMATION ---
     function buildHierarchy(data, level = 0) {
-        const levels = ["genre", "year", "runtime", "rating"];
+        const levels = ["type", "genre", "year", "runtime", "rating"];
         if (level >= levels.length) {
             return data.sort((a, b) => b.rating - a.rating).slice(0, 7)
                 .map(d => ({ name: d.title, rating: d.rating, value: 1 }));
@@ -34,15 +42,13 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(flatData) {
             return Array.from(grouped, ([key, values]) => ({ name: key, children: buildHierarchy(values, level + 1) }));
         }
     }
-    const hierarchicalData = { name: "Movies", children: buildHierarchy(flattenedData) };
+    const hierarchicalData = { name: "Media", children: buildHierarchy(flattenedData) };
     
-    // --- 3. DRAW THE CHART ---
     drawSunburst(hierarchicalData);
 
 }).catch(function(error) { console.error("Error in script:", error); });
 
 
-// --- FINAL DRAWING FUNCTION WITH CORRECTED INTERACTIVITY ---
 function drawSunburst(data) {
     const width = 500;
     const height = width;
@@ -69,11 +75,11 @@ function drawSunburst(data) {
       .join("path")
         .attr("fill", d => {
             if (!d.children) {
-                let genreNode = d;
-                while (genreNode.depth > 1) genreNode = genreNode.parent;
-                const genreColor = color(genreNode.data.name);
+                let typeNode = d;
+                while (typeNode.depth > 1) typeNode = typeNode.parent;
+                const baseColor = color(typeNode.data.name);
                 const ratingExtent = d3.extent(d.parent.children, s => s.data.rating);
-                const leafColorScale = d3.scaleLinear().domain(ratingExtent).range(["#fff", genreColor]).interpolate(d3.interpolateHcl);
+                const leafColorScale = d3.scaleLinear().domain(ratingExtent).range(["#fff", baseColor]).interpolate(d3.interpolateHcl);
                 return leafColorScale(d.data.rating);
             }
             let ancestor = d;
@@ -93,8 +99,6 @@ function drawSunburst(data) {
         .attr("transform", d => labelTransform(d.current)).text(d => d.data.name);
 
     const parent = svg.append("circle").datum(root).attr("r", radius).attr("fill", "none").attr("pointer-events", "all").on("click", clicked);
-
-    // --- ALL INTERACTIVITY FUNCTIONS BELOW ARE NEW AND CORRECTED ---
 
     function clicked(event, p) {
       parent.datum(p.parent || root);
@@ -128,13 +132,11 @@ function drawSunburst(data) {
     }
     
     function arcVisible(d) {
-    // Only show the first ring of children (where depth y0 is 1 and y1 is 2)
-    return d.y1 <= 2 && d.y0 >= 1 && d.x1 > d.x0;
+      return d.y1 <= 2 && d.y0 >= 1 && d.x1 > d.x0;
     }
 
     function labelVisible(d) {
-    // The label visibility can stay the same, as it already targets the first ring
-    return d.y1 <= 2 && d.y0 >= 1 && (d.y1 - d.y0) * (d.x1 - d.x0) > 0.03;
+      return d.y1 <= 2 && d.y0 >= 1 && (d.y1 - d.y0) * (d.x1 - d.x0) > 0.03;
     }
 
     function labelTransform(d) {
