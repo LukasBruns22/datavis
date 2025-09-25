@@ -1,66 +1,111 @@
-/* Basic page styling */
+/* ================================
+   General Body and Font Styling
+================================ */
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: #f0f2f5;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f7fa;
     color: #333;
-    margin: 0;
-    padding: 20px;
 }
 
-/* Main container for the whole dashboard */
-.dashboard-container {
-    max-width: 1400px;
-    margin: auto;
-}
-
-/* Header/Filters section styling */
-.filters-container {
+header {
     background-color: #ffffff;
-    padding: 10px 20px;
-    border-radius: 8px;
+    padding: 20px 30px;
+    border-bottom: 1px solid #ddd;
     margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.filters-container h1 {
+h1, h2 {
     margin: 0;
-    font-size: 1.5em;
+    color: #1a2533;
 }
 
-/* This is the key part: The 2x2 Grid Layout */
-.charts-grid {
+h2 {
+    font-size: 1.1em;
+    padding-bottom: 8px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+/* ================================
+   Main Layout Container
+================================ */
+.dashboard-container {
+    max-width: 1800px;
+    margin: 0 auto;
+    padding: 0 20px;
+
     display: grid;
-    /* Create two equal-width columns */
-    grid-template-columns: 1fr 1fr;
-    /* Create two rows, each taking up half the available height */
-    grid-template-rows: 400px 400px; 
-    /* Add spacing between the charts */
+    grid-template-columns: 2fr 3fr 2fr; /* middle column larger */
     gap: 20px;
+    align-items: flex-start;
 }
 
-/* Styling for each individual chart box */
-.chart-container {
-    background-color: #ffffff;
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+/* ================================
+   Column Styling
+================================ */
+#left-column, 
+#middle-column, 
+#right-column {
     display: flex;
     flex-direction: column;
-}
-
-.chart-container h2 {
-    margin-top: 0;
-    font-size: 1.1em;
-    text-align: center;
-    color: #555;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
-}
-
-/* Styling for the placeholder images */
-.chart-container img {
+    gap: 20px;
     width: 100%;
-    height: 100%;
-    object-fit: contain; /* Scales the image to fit without stretching it */
-    opacity: 0.6; /* Makes it look like a watermark/placeholder */
+}
+
+/* ================================
+   General Chart Container Styling
+================================ */
+.chart-container {
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+/* ================================
+   Sunburst Container
+================================ */
+#sunburst-container {
+    width: 100%;
+    height: 700px;             /* 🔥 force it to be tall */
+    aspect-ratio: 1 / 1;       /* keep it square */
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid red;     /* DEBUG: remove later */
+}
+
+#sunburst-container svg {
+    width: 100% !important;    /* force SVG to scale */
+    height: 100% !important;
+}
+
+/* ================================
+   Responsive Chart/Image Sizing
+================================ */
+.chart-container svg, 
+.chart-container .placeholder-image {
+    flex-grow: 1;
+    min-height: 0;
+}
+
+/* ================================
+   Tooltip Styling
+================================ */
+.tooltip {
+    position: absolute;
+    text-align: center;
+    padding: 8px;
+    font: 12px sans-serif;
+    background: lightsteelblue;
+    border: 0;
+    border-radius: 8px;
+    pointer-events: none;
 }
