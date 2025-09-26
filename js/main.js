@@ -77,6 +77,13 @@ function getDominantTopGenreForType(type) {
     return sortedGenres.find(genre => TOP_GENRES_FOR_COLOR.includes(genre)) || TOP_GENRES_FOR_COLOR[0];
 }
 
+// --- Helper for 5-year bins ---
+function getYearBin(year) {
+    const startYear = Math.floor(year / 5) * 5;
+    const endYear = startYear + 4;
+    return `${startYear} - ${endYear}`;
+}
+
 // --- 1. Load and Process Data ---
 d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
     // Flatten the data
@@ -95,6 +102,7 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
             });
         }
     });
+    flattenedData = flattenedData.filter(d => d.year <= 2024);
 
     // =========================================================
     // === CALCULATE EXTENTS *AFTER* POPULATING DATA ===
@@ -188,11 +196,24 @@ function buildHierarchy(data, sortedGenres, level = 0) {
     let grouped;
     if (["runtime", "rating", "year"].includes(currentLevel)) {
         const domain = data.map(d => d[currentLevel]);
+        if (["runtime", "rating"].includes(currentLevel)) {
+        // Keep the original numeric binning for runtime and rating
+        const domain = data.map(d => d[currentLevel]);
         const quantiles = d3.scaleQuantile().domain(domain).range(["Q1", "Q2", "Q3", "Q4"]);
         grouped = d3.group(data, d => {
             const [min, max] = quantiles.invertExtent(quantiles(d[currentLevel]));
             return `${d3.format(".1f")(min)} - ${d3.format(".1f")(max)}`;
         });
+    } else if (currentLevel === "year") {
+        // NEW: 5-year bins for year
+        grouped = d3.group(data, d => {
+            const startYear = Math.floor(d.year / 5) * 5;
+            const endYear = startYear + 4;
+            return `${startYear} - ${endYear}`;
+        });
+} else {
+    grouped = d3.group(data, d => d[currentLevel]);
+}
     } else {
         grouped = d3.group(data, d => d[currentLevel]);
     }

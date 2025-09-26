@@ -1,111 +1,94 @@
-/* ================================
-   General Body and Font Styling
-================================ */
+/* General Body and Font Styles */
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     margin: 0;
-    padding: 0;
-    background-color: #f4f7fa;
+    background-color: #f4f4f9;
     color: #333;
 }
 
 header {
-    background-color: #ffffff;
-    padding: 20px 30px;
-    border-bottom: 1px solid #ddd;
-    margin-bottom: 20px;
+    background-color: #2c3e50;
+    color: white;
+    padding: 1rem 2rem;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-h1, h2 {
-    margin: 0;
-    color: #1a2533;
-}
-
-h2 {
-    font-size: 1.1em;
-    padding-bottom: 8px;
-    margin-bottom: 15px;
-    border-bottom: 1px solid #eee;
-}
-
-/* ================================
-   Main Layout Container
-================================ */
+/* Dashboard Layout */
 .dashboard-container {
-    max-width: 1800px;
-    margin: 0 auto;
-    padding: 0 20px;
-
-    display: grid;
-    grid-template-columns: 2fr 3fr 2fr; /* middle column larger */
+    display: flex;
+    padding: 20px;
     gap: 20px;
-    align-items: flex-start;
+    height: calc(100vh - 100px); /* Full height minus header */
 }
 
-/* ================================
-   Column Styling
-================================ */
-#left-column, 
-#middle-column, 
-#right-column {
+#left-column, #middle-column, #right-column {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    width: 100%;
 }
 
-/* ================================
-   General Chart Container Styling
-================================ */
+#left-column { flex: 1; }
+#middle-column { flex: 2; }
+#right-column { flex: 2; }
+
+/* Chart Container Styles */
 .chart-container {
     background-color: #ffffff;
     border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     padding: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    box-sizing: border-box;
     display: flex;
     flex-direction: column;
+    flex-grow: 1; /* Allows containers to fill column space */
+    min-height: 0; /* Important for flexbox children */
+}
+
+.chart-container h2 {
+    margin-top: 0;
+    text-align: center;
+    color: #34495e;
+    font-size: 1.1rem;
+}
+
+/* Make SVGs fill their container */
+.chart-container svg {
     width: 100%;
+    height: 100%;
 }
 
-/* ================================
-   Sunburst Container
-================================ */
-#sunburst-container {
+.placeholder-image {
     width: 100%;
-    height: 700px;             /* 🔥 force it to be tall */
-    aspect-ratio: 1 / 1;       /* keep it square */
-    margin: 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid red;     /* DEBUG: remove later */
+    height: auto;
+    opacity: 0.5;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
 }
 
-#sunburst-container svg {
-    width: 100% !important;    /* force SVG to scale */
-    height: 100% !important;
-}
 
-/* ================================
-   Responsive Chart/Image Sizing
-================================ */
-.chart-container svg, 
-.chart-container .placeholder-image {
-    flex-grow: 1;
-    min-height: 0;
-}
-
-/* ================================
-   Tooltip Styling
-================================ */
+/* D3 Specific Styles */
 .tooltip {
     position: absolute;
     text-align: center;
+    width: auto;
+    height: auto;
     padding: 8px;
     font: 12px sans-serif;
-    background: lightsteelblue;
-    border: 0;
+    background: #f0f0f0;
+    border: 1px solid #ccc;
     border-radius: 8px;
-    pointer-events: none;
+    pointer-events: none; /* Prevents tooltip from blocking mouse events */
+    opacity: 0;
+    transition: opacity 0.2s;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+}
+
+.axis-label {
+    font-size: 0.9em;
+    fill: #555;
+    font-weight: 500;
+}
+
+.x-axis .tick text, .y-axis .tick text {
+    font-size: 0.8em;
 }
