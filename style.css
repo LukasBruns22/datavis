@@ -29,8 +29,8 @@ header {
 }
 
 #left-column { flex: 1; }
-#middle-column { flex: 2; }
-#right-column { flex: 2; }
+#middle-column { flex: 1.5; }
+#right-column { flex: 1.5; }
 
 /* Chart Container Styles */
 .chart-container {
@@ -40,8 +40,9 @@ header {
     padding: 20px;
     display: flex;
     flex-direction: column;
-    flex-grow: 1; /* Allows containers to fill column space */
-    min-height: 0; /* Important for flexbox children */
+    flex-grow: 1;
+    flex-basis: 0; /* Add this line */
+    min-height: 0; 
 }
 
 .chart-container h2 {
@@ -59,8 +60,8 @@ header {
 
 .placeholder-image {
     width: 100%;
-    height: auto;
-    opacity: 0.5;
+    height: 100%; /* Change from 'auto' */
+    object-fit: contain; /* Add this line */
     border: 2px dashed #ccc;
     border-radius: 8px;
 }
