@@ -60,7 +60,7 @@ header {
 
 .placeholder-image {
     width: 100%;
-    height: 100%; /* Change from 'auto' */
+    height: 90%; /* Change from 'auto' */
     object-fit: contain; /* Add this line */
     border: 2px dashed #ccc;
     border-radius: 8px;
