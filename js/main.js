@@ -128,6 +128,8 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
     sunburst.draw();
     correlationPlot.update(flattenedData, 'type');
 
+    createDropdown(HIERARCHY_LEVELS);
+
 }).catch(function(error) {
     console.error("Error loading or processing data:", error);
 });
@@ -226,4 +228,32 @@ function buildHierarchy(data, sortedGenres, level = 0) {
         // FIXED: For type level (level 0), use the dominant top genre for that type
         genre: currentLevel === 'type' ? getDominantTopGenreForType(key) : dominantGenre
     }));
+}
+
+function createDropdown(attributes) {
+    const container = d3.select("#dropdown-container");
+    container.selectAll("*").remove();
+
+    container.append("label")
+        .attr("for", "attribute-dropdown")
+        .text("Jump to Attribute")
+        .style("margin-right", "8px");
+
+    const dropdown = container.append("select")
+        .attr("id", "attribute-dropdown")
+        .style("max-width", "50%");
+        
+
+    dropdown.selectAll("option")
+        .data(attributes)
+        .enter()
+        .append("option")
+        .attr("value", d => d)
+        .text(d => d.charAt(0).toUpperCase() + d.slice(1));
+
+    dropdown.on("change", function(event) {
+        const selected = d3.select(this).property("value");
+        correlationPlot.update(flattenedData, selected);
+        d3.select("#correlation-title").text(`Correlation: IMDb Rating vs ${selected}`);
+    });
 }

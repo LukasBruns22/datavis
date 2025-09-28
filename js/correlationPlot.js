@@ -20,9 +20,8 @@ class CorrelationPlot {
     }
 
     resize() {
-        const container = this.svg.node().parentElement;
-        const containerWidth = container.getBoundingClientRect().width;
-        const containerHeight = container.getBoundingClientRect().height;
+        const containerWidth = this.svg.node().clientWidth;
+        const containerHeight = this.svg.node().clientHeight;
 
         this.svg
             .attr('width', containerWidth)
@@ -43,7 +42,7 @@ class CorrelationPlot {
 
     update(data, attribute) {
         this.chartGroup.selectAll(".plot-element").remove();
-        this.yAxisLabel.text("IMDB Rating");
+        this.yAxisLabel.text("IMDb Rating");
 
         const yValue = d => d.rating;
 

@@ -10,29 +10,33 @@
     <header>
         <h1>IMDb Data Explorer: Trends in Film & TV</h1>
     </header>
-    
+
     <main class="dashboard-container">
-        
+
         <section id="left-column">
             <div id="network-graph-container" class="chart-container">
                 <h2>Actor-Genre Network</h2>
-                <img src="img/network-sketch.png" alt="Network Graph Sketch" class="placeholder-image">
+                <img src="img/network-sketch.svg" alt="Network Graph Sketch" class="placeholder-image">
             </div>
         </section>
-        
+
         <section id="middle-column">
+            <div class="chart-container">
+                <div id="dropdown-container"></div>
+            </div>  
             <div id="sunburst-container" class="chart-container">
                 <h2>Hierarchical Explorer</h2>
-                </div>
+            </div>
+            <div class="chart-container"></div>   
         </section>
 
         <section id="right-column">
             <div id="heatmap-container" class="chart-container">
-                <h2>Actor Performance Heatmap</h2>
-                <img src="img/heatmap-sketch.png" alt="Heatmap Sketch" class="placeholder-image">
+                <h2>Movie Ratings across Genres</h2>
+                <img src="img/heatmap-sketch.svg" alt="Heatmap Sketch" class="placeholder-image">
             </div>
             <div id="correlation-plot-container" class="chart-container">
-                <h2>Correlation View</h2>
+                <h2 id="correlation-title">Movies: IMDb Rating vs Genre</h2>
                 <svg id="correlation-chart-svg"></svg>
             </div>
         </section>
