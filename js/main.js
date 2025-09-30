@@ -105,6 +105,13 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
     flattenedData = flattenedData.filter(d => d.year <= 2024);
 
     // =========================================================
+    // === INITIALIZE DISPATCHER AND STATE MANAGER ===========
+    // =========================================================
+    const dispatcher = new Dispatcher();
+    const stateManager = new StateManager();
+    // =========================================================
+
+    // =========================================================
     // === CALCULATE EXTENTS *AFTER* POPULATING DATA ===
     // =========================================================
     const yearExtent = d3.extent(flattenedData, d => d.year);
@@ -121,8 +128,31 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
     const hierarchicalData = { name: "Media", children: buildHierarchy(flattenedData, sortedGenres) };
 
     // --- 2. Initialize Charts ---
-    correlationPlot = new CorrelationPlot("#correlation-chart-svg", flattenedData, getColor, TOP_GENRES_FOR_COLOR);
-    sunburst = new SunburstChart("#sunburst-container", hierarchicalData, handleSunburstClick, getColor);
+    correlationPlot = new CorrelationPlot("#correlation-chart-svg", flattenedData, getColor, TOP_GENRES_FOR_COLOR, dispatcher);
+    sunburst = new SunburstChart("#sunburst-container", hierarchicalData, dispatcher, getColor);
+
+    // =========================================================
+    // === CENTRAL EVENT LISTENER ==============================
+    // =========================================================
+    // Listen for path changes emitted from any chart
+    dispatcher.on('pathChange', (pathInfo) => {
+    // 1. Get the current path from the event
+    const currentPath = pathInfo.path;
+
+    // 2. Update the central state
+    stateManager.setPath(currentPath, HIERARCHY_LEVELS);
+
+    // 3. Filter the master dataset
+    const filtered = stateManager.applyFilters(flattenedData);
+    
+    // 4. Determine the next attribute to plot
+    const nextAttribute = HIERARCHY_LEVELS[pathInfo.depth] || 'rating';
+    
+    // 5. Instruct the view to update, PASSING THE CURRENT PATH to it
+    correlationPlot.update(filtered, nextAttribute, currentPath); 
+    sunburst.update(currentPath); 
+});
+    // =========================================================
 
     // --- 3. Initial Draw ---
     sunburst.draw();
@@ -133,21 +163,6 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
 }).catch(function(error) {
     console.error("Error loading or processing data:", error);
 });
-
-function handleSunburstClick(path, depth) {
-    let filtered = [...flattenedData];
-    path.forEach((filterValue, i) => {
-        const attribute = HIERARCHY_LEVELS[i];
-        if (typeof filterValue === 'string' && filterValue.includes(' - ')) {
-            const [min, max] = filterValue.split(' - ').map(parseFloat);
-            filtered = filtered.filter(d => d[attribute] >= min && d[attribute] <= max);
-        } else if (filterValue !== "Other" && filterValue !== "Media") {
-            filtered = filtered.filter(d => String(d[attribute]) === String(filterValue));
-        }
-    });
-    const nextAttribute = HIERARCHY_LEVELS[depth] || 'rating';
-    correlationPlot.update(filtered, nextAttribute);
-}
 
 function buildHierarchy(data, sortedGenres, level = 0) {
     const avgRating = d3.mean(data, d => d.rating);
