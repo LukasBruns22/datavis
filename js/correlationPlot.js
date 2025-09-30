@@ -92,11 +92,11 @@ class CorrelationPlot {
             .style("position", "absolute")
             .style("background", "rgba(0, 0, 0, 0.85)")
             .style("color", "#f8f9fa")
-            .style("padding", "12px 16px")
+            .style("padding", "30px 50px")
             .style("border-radius", "10px")
-            .style("font-size", "13px")
+            .style("font-size", "35px")
             .style("font-family", "'Segoe UI', sans-serif")
-            .style("box-shadow", "0 6px 18px rgba(0,0,0,0.45)")
+            .style("box-shadow", "0 6px 35px rgba(0,0,0,0.45)")
             .style("pointer-events", "none")
             .style("opacity", 0)
             .style("z-index", 1000);
@@ -254,7 +254,7 @@ update(data, attribute, path) {
             .on("mouseover", (event, d) => {
                 this.tooltip.transition().duration(200).style("opacity", 1);
                 this.tooltip.html(`
-                    <div style="font-weight:700; font-size:14px; margin-bottom:6px; color:#fff;">${d.title}</div>
+                    <div style="font-weight:700; font-size:35px; margin-bottom:6px; color:#fff;">${d.title}</div>
                     <div style="border-top:1px solid rgba(255,255,255,0.2); margin:6px 0;"></div>
                     <div style="color:#f1f3f5;"><strong>Rating:</strong> ${d.rating.toFixed(1)} / 10</div>
                     <div style="color:#f1f3f5;"><strong>Runtime:</strong> ${d.runtime} min</div>
@@ -349,12 +349,13 @@ update(data, attribute, path) {
         .attr("class", "plot-element box-group")
         .attr("transform", d => `translate(${this.xScale(d.key)}, 0)`)
         .style("cursor", "pointer")
+        // In correlationPlot.js, inside the _updateBoxPlot method
+
         .on("mouseover", (event, d) => {
             d3.select(event.currentTarget).select("rect")
                 .attr("stroke-width", 3)
                 .attr("stroke", "#007bff");
 
-            // --- FIXED: Restored tooltip HTML logic ---
             const header = (d.key === 'movie') ? 'Movies' : (d.key === 'tvSeries' || d.key === 'tvseries') ? 'TV Shows' : d.key;
             let typeDistributionText = (d.typeDistribution || '')
                 .replace(/\bmovie\b/gi, "Movies")
@@ -363,7 +364,7 @@ update(data, attribute, path) {
 
             this.tooltip.transition().duration(200).style("opacity", 1);
             this.tooltip.html(`
-                <div style="font-weight:700; font-size:14px; margin-bottom:6px; color:#fff;">${header}</div>
+                <div style="font-weight:700; font-size:35px; margin-bottom:8px; color:#fff;">${header}</div>
                 <div style="border-top:1px solid rgba(255,255,255,0.08); margin:6px 0;"></div>
                 <div style="color:#fff; font-weight:700; margin-bottom:4px;">📊 Statistics</div>
                 <div style="color:#f1f3f5">🔢 Count: ${d.count.toLocaleString()}</div>
@@ -374,14 +375,14 @@ update(data, attribute, path) {
                 <div style="border-top:1px solid rgba(255,255,255,0.08); margin:6px 0;"></div>
                 <div style="color:#fff; font-weight:700; margin-bottom:4px;">📂 Distribution</div>
                 <div style="color:#f1f3f5">${typeDistributionText}</div>
-                <div style="margin-top:6px; font-size:11px; color:#fff; font-weight:700;"><em>Click to drill down</em></div>
+                <div style="margin-top:8px; color:#aaa; font-weight:700;"><em>Click to drill down</em></div>
             `);
 
             const maxWidth = (window.innerWidth || document.documentElement.clientWidth);
             const left = Math.min(event.pageX + 15, maxWidth - 240);
             const top = Math.max(10, event.pageY - 10);
             this.tooltip.style("left", left + "px").style("top", top + "px");
-        })
+        })  
         .on("mouseout", (event) => {
             d3.select(event.currentTarget).select("rect")
                 .attr("stroke-width", 1)

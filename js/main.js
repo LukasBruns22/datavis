@@ -69,7 +69,6 @@ function getDominantTopGenreForType(type) {
     const typeData = flattenedData.filter(d => d.type === type);
     const genreCounts = d3.rollup(typeData, v => v.length, d => d.genre);
     
-    // Find the most common genre that's in our top genres
     const sortedGenres = Array.from(genreCounts.entries())
         .sort((a, b) => b[1] - a[1])
         .map(d => d[0]);
@@ -104,61 +103,60 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
     });
     flattenedData = flattenedData.filter(d => d.year <= 2024);
 
-    // =========================================================
-    // === INITIALIZE DISPATCHER AND STATE MANAGER ===========
-    // =========================================================
     const dispatcher = new Dispatcher();
     const stateManager = new StateManager();
-    // =========================================================
 
-    // =========================================================
-    // === CALCULATE EXTENTS *AFTER* POPULATING DATA ===
-    // =========================================================
     const yearExtent = d3.extent(flattenedData, d => d.year);
     const runtimeExtent = d3.extent(flattenedData, d => d.runtime);
 
-    // Now that we have the extents, we can define our scales
     ratingSaturationScale = d3.scaleLinear().domain([1, 10]).range([0.3, 1.0]).clamp(true);
     yearSaturationScale = d3.scaleLinear().domain(yearExtent).range([0.3, 1.0]).clamp(true);
     runtimeSaturationScale = d3.scaleLinear().domain(runtimeExtent).range([0.3, 1.0]).clamp(true);
-    // =========================================================
 
     const genreCounts = d3.rollup(flattenedData, v => v.length, d => d.genre);
     const sortedGenres = Array.from(genreCounts.entries()).sort((a, b) => b[1] - a[1]).map(d => d[0]);
     const hierarchicalData = { name: "Media", children: buildHierarchy(flattenedData, sortedGenres) };
 
     // --- 2. Initialize Charts ---
-    correlationPlot = new CorrelationPlot("#correlation-chart-svg", flattenedData, getColor, TOP_GENRES_FOR_COLOR, dispatcher);
     sunburst = new SunburstChart("#sunburst-container", hierarchicalData, dispatcher, getColor);
+    correlationPlot = new CorrelationPlot("#correlation-chart-svg", flattenedData, getColor, TOP_GENRES_FOR_COLOR, dispatcher);
+    const dropdown = new DropdownControl("#dropdown-container", HIERARCHY_LEVELS, dispatcher);
 
-    // =========================================================
-    // === CENTRAL EVENT LISTENER ==============================
-    // =========================================================
-    // Listen for path changes emitted from any chart
+    // --- Central Event Listeners ---
     dispatcher.on('pathChange', (pathInfo) => {
-    // 1. Get the current path from the event
-    const currentPath = pathInfo.path;
+        const currentPath = pathInfo.path;
+        stateManager.setPath(currentPath, HIERARCHY_LEVELS);
+        const filtered = stateManager.applyFilters(flattenedData);
 
-    // 2. Update the central state
-    stateManager.setPath(currentPath, HIERARCHY_LEVELS);
+        let attributeToPlot;
+        if (pathInfo.isGoBack) {
+            attributeToPlot = HIERARCHY_LEVELS[pathInfo.depth - 1];
+        } else {
+            attributeToPlot = HIERARCHY_LEVELS[pathInfo.depth] || 'rating';
+        }
+        if (!attributeToPlot) {
+            attributeToPlot = HIERARCHY_LEVELS[0];
+        }
+        
+        const attributeName = attributeToPlot.charAt(0).toUpperCase() + attributeToPlot.slice(1);
+        d3.select("#correlation-title").text(`Correlation: IMDb Rating vs ${attributeName}`);
+        
+        correlationPlot.update(filtered, attributeToPlot, currentPath);
+        sunburst.update(currentPath);
+    });
 
-    // 3. Filter the master dataset
-    const filtered = stateManager.applyFilters(flattenedData);
-    
-    // 4. Determine the next attribute to plot
-    const nextAttribute = HIERARCHY_LEVELS[pathInfo.depth] || 'rating';
-    
-    // 5. Instruct the view to update, PASSING THE CURRENT PATH to it
-    correlationPlot.update(filtered, nextAttribute, currentPath); 
-    sunburst.update(currentPath); 
-});
-    // =========================================================
+    dispatcher.on('jumpToAttribute', (attribute) => {
+        const attributeName = attribute.charAt(0).toUpperCase() + attribute.slice(1);
+        d3.select("#correlation-title").text(`Correlation: IMDb Rating vs ${attributeName}`);
+
+        correlationPlot.update(flattenedData, attribute, []);
+        sunburst.update([]);
+    });
 
     // --- 3. Initial Draw ---
     sunburst.draw();
-    correlationPlot.update(flattenedData, 'type');
-
-    createDropdown(HIERARCHY_LEVELS);
+    correlationPlot.update(flattenedData, 'type', []);
+    dropdown.render();
 
 }).catch(function(error) {
     console.error("Error loading or processing data:", error);
@@ -214,23 +212,20 @@ function buildHierarchy(data, sortedGenres, level = 0) {
     if (["runtime", "rating", "year"].includes(currentLevel)) {
         const domain = data.map(d => d[currentLevel]);
         if (["runtime", "rating"].includes(currentLevel)) {
-        // Keep the original numeric binning for runtime and rating
-        const domain = data.map(d => d[currentLevel]);
-        const quantiles = d3.scaleQuantile().domain(domain).range(["Q1", "Q2", "Q3", "Q4"]);
-        grouped = d3.group(data, d => {
-            const [min, max] = quantiles.invertExtent(quantiles(d[currentLevel]));
-            return `${d3.format(".1f")(min)} - ${d3.format(".1f")(max)}`;
-        });
-    } else if (currentLevel === "year") {
-        // NEW: 5-year bins for year
-        grouped = d3.group(data, d => {
-            const startYear = Math.floor(d.year / 5) * 5;
-            const endYear = startYear + 4;
-            return `${startYear} - ${endYear}`;
-        });
-} else {
-    grouped = d3.group(data, d => d[currentLevel]);
-}
+            const quantiles = d3.scaleQuantile().domain(domain).range(["Q1", "Q2", "Q3", "Q4"]);
+            grouped = d3.group(data, d => {
+                const [min, max] = quantiles.invertExtent(quantiles(d[currentLevel]));
+                return `${d3.format(".1f")(min)} - ${d3.format(".1f")(max)}`;
+            });
+        } else if (currentLevel === "year") {
+            grouped = d3.group(data, d => {
+                const startYear = Math.floor(d.year / 5) * 5;
+                const endYear = startYear + 4;
+                return `${startYear} - ${endYear}`;
+            });
+        } else {
+            grouped = d3.group(data, d => d[currentLevel]);
+        }
     } else {
         grouped = d3.group(data, d => d[currentLevel]);
     }
@@ -240,35 +235,6 @@ function buildHierarchy(data, sortedGenres, level = 0) {
         children: buildHierarchy(values, sortedGenres, level + 1),
         avgRating: d3.mean(values, d => d.rating),
         type: d3.mode(values, d => d.type),
-        // FIXED: For type level (level 0), use the dominant top genre for that type
         genre: currentLevel === 'type' ? getDominantTopGenreForType(key) : dominantGenre
     }));
-}
-
-function createDropdown(attributes) {
-    const container = d3.select("#dropdown-container");
-    container.selectAll("*").remove();
-
-    container.append("label")
-        .attr("for", "attribute-dropdown")
-        .text("Jump to Attribute")
-        .style("margin-right", "8px");
-
-    const dropdown = container.append("select")
-        .attr("id", "attribute-dropdown")
-        .style("max-width", "50%");
-        
-
-    dropdown.selectAll("option")
-        .data(attributes)
-        .enter()
-        .append("option")
-        .attr("value", d => d)
-        .text(d => d.charAt(0).toUpperCase() + d.slice(1));
-
-    dropdown.on("change", function(event) {
-        const selected = d3.select(this).property("value");
-        correlationPlot.update(flattenedData, selected);
-        d3.select("#correlation-title").text(`Correlation: IMDb Rating vs ${selected}`);
-    });
 }
