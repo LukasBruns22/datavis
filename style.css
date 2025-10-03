@@ -118,3 +118,7 @@ header {
 .x-axis .tick text, .y-axis .tick text {
     font-size: 0.8em;
 }
+
+#dropdown-container{
+    font-size:50px;
+}

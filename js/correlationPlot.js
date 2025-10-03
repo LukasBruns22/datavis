@@ -5,13 +5,14 @@ class CorrelationPlot {
         this.color = colorFunction;
         this.topGenres = topGenres;
         this.dispatcher = dispatcher; // Store the dispatcher
-        this.margin = { top: 50, right: 30, bottom: 70, left: 80 };
+        this.margin = { top: 120, right: 30, bottom: 70, left: 80 };
         this.showTrendLine = false;
         this.currentPath = []; // Track the drill-down path
         this.hierarchyLevels = ['type', 'genre', 'year', 'runtime']; // Define hierarchy
         this._setupChartArea();
         this.resize();
     }
+    
 
     _setupChartArea() {
         this.chartGroup = this.svg.append("g");
@@ -51,14 +52,16 @@ class CorrelationPlot {
 
         const padding = { x: 15, y: 10 };
         const textBBox = this.trendToggleText.node().getBBox();
-        const rectWidth = textBBox.width + padding.x * 2;
-        const rectHeight = textBBox.height + padding.y * 2;
+        
+        // Standardize button size based on the trend toggle button
+        this.uniformButtonWidth = textBBox.width + padding.x * 2;
+        this.uniformButtonHeight = textBBox.height + padding.y * 2;
 
-        this.trendToggleText.attr("x", rectWidth / 2).attr("y", rectHeight / 2);
+        this.trendToggleText.attr("x", this.uniformButtonWidth / 2).attr("y", this.uniformButtonHeight / 2);
 
         this.trendToggleButton.insert("rect", "text")
-            .attr("width", rectWidth)
-            .attr("height", rectHeight)
+            .attr("width", this.uniformButtonWidth)
+            .attr("height", this.uniformButtonHeight)
             .attr("rx", 15)
             .attr("ry", 15)
             .style("fill", "#f8f9fa")
@@ -103,81 +106,98 @@ class CorrelationPlot {
     }
 
     _renderNavigation() {
-    if (!this.navigationGroup) return;
-    this.navigationGroup.selectAll("*").remove();
+        if (!this.navigationGroup) return;
+        this.navigationGroup.selectAll("*").remove();
 
-    if (this.currentPath.length === 0) return;
+        if (this.currentPath.length === 0) return;
 
-    const buttonPadding = { x: 12, y: 6 };
-    const buttonSpacing = 10;
-    const arrowSpacing = 14;
+        const buttonPadding = { x: 12, y: 6 };
+        const buttonSpacing = 10;
+        const arrowSpacing = 14;
 
-    let xPos = this.margin.left;
-    const yPos = this.margin.top - 40;
+        let xPos = this.margin.left;
+        const yPos = this.margin.top - 100;
 
-    this.currentPath.forEach((levelValue, i) => {
-        // Get the name of the hierarchy level (e.g., 'type', 'genre')
-        const levelName = this.hierarchyLevels[i];
+        this.currentPath.forEach((levelValue, i) => {
+            // Get the name of the hierarchy level (e.g., 'type', 'genre')
+            const levelName = this.hierarchyLevels[i];
 
-        // Use a map for user-friendly headers
-        const labelMap = {
-            'type': 'Type', 'genre': 'Genre',
-            'year': 'Year', 'runtime': 'Runtime'
-        };
-        const header = labelMap[levelName] || levelName;
+            // Use a map for user-friendly headers
+            const labelMap = {
+                'type': 'Type', 'genre': 'Genre',
+                'year': 'Year', 'runtime': 'Runtime'
+            };
+            const header = labelMap[levelName] || levelName;
 
-        // Make the label more descriptive, e.g., "Genre: Action"
-        const label = `${header}: ${levelValue}`;
+            // Make the label more descriptive, e.g., "Genre: Action"
+            const label = `${header}: ${levelValue}`;
 
-        const group = this.navigationGroup.append("g")
-            .attr("transform", `translate(${xPos}, ${yPos})`)
-            .style("cursor", "pointer");
+            const group = this.navigationGroup.append("g")
+                .attr("transform", `translate(${xPos}, ${yPos})`)
+                .style("cursor", "pointer");
 
-        const rect = group.append("rect")
-            .attr("rx", 15).attr("ry", 15)
-            .style("fill", "#f8f9fa").style("stroke", "#dee2e6")
-            .style("stroke-width", 1).style("transition", "fill 0.2s ease-in-out");
+            const rect = group.append("rect")
+                .attr("rx", 15).attr("ry", 15)
+                .style("fill", "#f8f9fa").style("stroke", "#dee2e6")
+                .style("stroke-width", 1).style("transition", "fill 0.2s ease-in-out");
 
-        const text = group.append("text")
-            .text(label).style("font-size", "35px")
-            .style("font-weight", "600").style("fill", "#333333");
+            const text = group.append("text")
+                .text(label)
+                .attr("text-anchor", "middle")
+                .style("font-size", "35px")
+                .style("font-weight", "600").style("fill", "#333333");
+            
+            // Apply the uniform button size
+            rect.attr("width", this.uniformButtonWidth)
+                .attr("height", this.uniformButtonHeight);
 
-        const textBBox = text.node().getBBox();
-        const rectWidth = textBBox.width + buttonPadding.x * 2;
-        const rectHeight = textBBox.height + buttonPadding.y * 2;
+            // Truncate text if it's too long for the button
+            const availableWidth = this.uniformButtonWidth - (buttonPadding.x * 2);
+            let currentLabel = label;
+            if (text.node().getBBox().width > availableWidth) {
+                while (text.node().getBBox().width > availableWidth && currentLabel.length > 3) {
+                    currentLabel = currentLabel.slice(0, -1);
+                    text.text(currentLabel + '...');
+                }
+            }
 
-        rect.attr("width", rectWidth)
-            .attr("height", rectHeight);
+            // Center the text inside the button
+            text.attr("x", this.uniformButtonWidth / 2)
+                .attr("y", this.uniformButtonHeight / 2)
+                .style("dominant-baseline", "middle");
 
-        text.attr("x", buttonPadding.x)
-            .attr("y", rectHeight / 2)
-            .style("dominant-baseline", "middle");
+            // The click handler now correctly emits a 'pathChange' event
+            group.on("click", () => {
+                let newPath;
+                // If the last breadcrumb (the current level) is clicked, go up one level.
+                if (i === this.currentPath.length - 1) {
+                    newPath = this.currentPath.slice(0, i);
+                } else {
+                    // Otherwise, go to the clicked breadcrumb's level.
+                    newPath = this.currentPath.slice(0, i + 1);
+                }
+                const newDepth = newPath.length;
 
-        // The click handler now correctly emits a 'pathChange' event
-        group.on("click", () => {
-            const newPath = this.currentPath.slice(0, i + 1);
-            const newDepth = newPath.length;
+                this.dispatcher.emit('pathChange', { path: newPath, depth: newDepth });
+            });
 
-            this.dispatcher.emit('pathChange', { path: newPath, depth: newDepth });
+            group
+                .on("mouseover", () => rect.style("fill", "#e9ecef"))
+                .on("mouseout", () => rect.style("fill", "#f8f9fa"));
+
+            xPos += this.uniformButtonWidth + buttonSpacing;
+
+            if (i < this.currentPath.length - 1) {
+                this.navigationGroup.append("text")
+                    .text("→").attr("x", xPos).attr("y", yPos + this.uniformButtonHeight / 2)
+                    .style("dominant-baseline", "middle").style("font-size", "14px")
+                    .style("fill", "#333");
+                xPos += arrowSpacing;
+            }
         });
+    }
 
-        group
-            .on("mouseover", () => rect.style("fill", "#e9ecef"))
-            .on("mouseout", () => rect.style("fill", "#f8f9fa"));
-
-        xPos += rectWidth + buttonSpacing;
-
-        if (i < this.currentPath.length - 1) {
-            this.navigationGroup.append("text")
-                .text("→").attr("x", xPos).attr("y", yPos + rectHeight / 2)
-                .style("dominant-baseline", "middle").style("font-size", "14px")
-                .style("fill", "#333");
-            xPos += arrowSpacing;
-        }
-    });
-}
-
-   resize() {
+    resize() {
         const container = this.svg.node().parentElement;
         const containerWidth = container.getBoundingClientRect().width;
         const containerHeight = container.getBoundingClientRect().height;
@@ -189,10 +209,9 @@ class CorrelationPlot {
         this.xAxisGroup.attr("transform", `translate(0, ${this.height})`);
         this.xAxisLabel.attr("transform", `translate(${this.width / 2}, ${this.height + 65})`);
         this.yAxisLabel.attr("transform", `translate(-75, ${this.height / 2}) rotate(-90)`);
-        this.trendToggleButton.attr("transform", `translate(${containerWidth - 255}, 10)`);
+        this.trendToggleButton.attr("transform", `translate(${containerWidth - 255}, ${this.margin.top - 100})`);
     }
 
-    // In correlationPlot.js
 
 update(data, attribute, path) {
     this.chartGroup.selectAll(".plot-element").remove();
@@ -210,8 +229,11 @@ update(data, attribute, path) {
     const yValue = d => d.rating;
 
     if (this.currentXAttribute === 'year') {
-        this._updateBoxPlot(data, 'year', yValue);
-        this._hideTrendToggle();
+    this._updateBoxPlot(data, 'year', yValue);
+    this._hideTrendToggle();
+} else if (attribute === 'other-genres') { // <-- ADD THIS ELSE IF BLOCK
+    this._updateBoxPlot(data, 'other-genres', yValue);
+    this._hideTrendToggle();
     } else if (['runtime', 'rating'].includes(this.currentXAttribute) && data.length > 1) {
         this._updateScatterPlot(data, this.currentXAttribute, yValue);
         this._showTrendToggle();
@@ -247,7 +269,7 @@ update(data, attribute, path) {
             .attr("cy", d => this.yScale(yValue(d)))
             .attr("r", 12)
             .style("fill", d => this.color(d))
-            .style("opacity", 0.7)
+            .style("opacity", 1)
             .style("stroke", "black")
             .style("stroke-width", 0.5)
             .style("cursor", "pointer")
@@ -349,8 +371,7 @@ update(data, attribute, path) {
         .attr("class", "plot-element box-group")
         .attr("transform", d => `translate(${this.xScale(d.key)}, 0)`)
         .style("cursor", "pointer")
-        // In correlationPlot.js, inside the _updateBoxPlot method
-
+        
         .on("mouseover", (event, d) => {
             d3.select(event.currentTarget).select("rect")
                 .attr("stroke-width", 3)
@@ -382,7 +403,7 @@ update(data, attribute, path) {
             const left = Math.min(event.pageX + 15, maxWidth - 240);
             const top = Math.max(10, event.pageY - 10);
             this.tooltip.style("left", left + "px").style("top", top + "px");
-        })  
+        }) 
         .on("mouseout", (event) => {
             d3.select(event.currentTarget).select("rect")
                 .attr("stroke-width", 1)
@@ -487,4 +508,7 @@ update(data, attribute, path) {
         const r2 = 1 - (ssRes / ssTotal);
         return { slope, intercept, r2: Math.max(0, r2) };
     }
+
+
 }
+
