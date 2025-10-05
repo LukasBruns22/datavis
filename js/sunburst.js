@@ -130,33 +130,55 @@ class SunburstChart {
             .attr("pointer-events", d => (d.depth === 1) ? "auto" : "none")
             .attr("d", d => arc(d.current))
             .style("cursor", d => d.children ? "pointer" : "default")
+            
             .on("mouseover", function(event, d) {
                 tooltip.transition().duration(200).style("opacity", 1);
-                const ancestorNames = d.ancestors().map(a => a.data.name).reverse();
-                const currentSegment = ancestorNames.pop();
-                const displayAncestors = ancestorNames.map(n => formatName(n));
-                const displayCurrent = formatName(currentSegment);
-                const value = d.value || 0;
-                const totalValue = root.value;
-                const percentageOfTotal = (value / totalValue * 100).toFixed(2);
-                const percentageOfParent = d.parent ? (value / d.parent.value * 100).toFixed(2) : 100.00;
-                const pathString = displayAncestors.length > 0
-                    ? `<div style="font-size: 28px; color: #bbb; margin-bottom: 15px;">
-                           <span style="font-weight: 500;">Path:</span> ${displayAncestors.join(' → ')}
-                       </div>`
-                    : '';
-                tooltip.html(`
-                    <div style="font-size: 40px; font-weight: bold; color: #fff; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #555;">
-                        ${displayCurrent}
-                    </div>
-                    ${pathString}
-                    <div style="font-size: 32px; line-height: 1.6;">
-                        <strong>Count:</strong> ${value.toLocaleString()}<br>
-                        <strong>Of Total:</strong> ${percentageOfTotal}%<br>
-                        ${d.parent && d.parent !== root ? `<strong>Of Parent:</strong> ${percentageOfParent}%` : ''}
-                    </div>
-                    ${d.children ? `<div style="margin-top: 15px; padding-top: 12px; border-top: 1px solid #555; font-style: italic; color: #999; font-size: 26px;">Click to drill down</div>` : ''}
-                `);
+                
+                // Check if this is a leaf node (individual movie/show)
+                const isLeaf = !d.children || d.children.length === 0;
+                
+                if (isLeaf && d.data.title) {
+                    // Show detailed movie/show information for leaf nodes
+                    tooltip.html(`
+                        <div style="font-size: 40px; font-weight: bold; color: #fff; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #555;">
+                            ${d.data.title}
+                        </div>
+                        <div style="font-size: 32px; line-height: 1.6;">
+                            <strong>Rating:</strong> ${d.data.rating.toFixed(1)} / 10<br>
+                            <strong>Runtime:</strong> ${d.data.runtime} min<br>
+                            <strong>Year:</strong> ${d.data.year}<br>
+                            <strong>Genre:</strong> ${d.data.genre}<br>
+                            <strong>Type:</strong> ${d.data.type === 'movie' ? 'Movie' : 'TV Show'}
+                        </div>
+                    `);
+                } else {
+                    // Show aggregated information for non-leaf nodes
+                    const ancestorNames = d.ancestors().map(a => a.data.name).reverse();
+                    const currentSegment = ancestorNames.pop();
+                    const displayAncestors = ancestorNames.map(n => formatName(n));
+                    const displayCurrent = formatName(currentSegment);
+                    const value = d.value || 0;
+                    const totalValue = root.value;
+                    const percentageOfTotal = (value / totalValue * 100).toFixed(2);
+                    const percentageOfParent = d.parent ? (value / d.parent.value * 100).toFixed(2) : 100.00;
+                    const pathString = displayAncestors.length > 0
+                        ? `<div style="font-size: 28px; color: #bbb; margin-bottom: 15px;">
+                               <span style="font-weight: 500;">Path:</span> ${displayAncestors.join(' → ')}
+                           </div>`
+                        : '';
+                    tooltip.html(`
+                        <div style="font-size: 40px; font-weight: bold; color: #fff; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #555;">
+                            ${displayCurrent}
+                        </div>
+                        ${pathString}
+                        <div style="font-size: 32px; line-height: 1.6;">
+                            <strong>Count:</strong> ${value.toLocaleString()}<br>
+                            <strong>Of Total:</strong> ${percentageOfTotal}%<br>
+                            ${d.parent && d.parent !== root ? `<strong>Of Parent:</strong> ${percentageOfParent}%` : ''}
+                        </div>
+                        ${d.children ? `<div style="margin-top: 15px; padding-top: 12px; border-top: 1px solid #555; font-style: italic; color: #999; font-size: 26px;">Click to drill down</div>` : ''}
+                    `);
+                }
             })
             .on("mousemove", function(event, d) {
                 tooltip.style("left", (event.pageX + 15) + "px")
@@ -238,7 +260,12 @@ class SunburstChart {
             });
 
             const t = svg.transition().duration(750);
-            const isVisible = d => d.target.y1 <= 2 && d.target.y0 >= 1 && d.target.x1 > d.target.x0;
+            const isVisible = d => {
+                // A node is visible if it's within the visible depth range and has a valid angle range
+                const withinDepthRange = d.target.y1 <= 2 && d.target.y0 >= 1;
+                const hasValidAngle = d.target.x1 > d.target.x0;
+                return withinDepthRange && hasValidAngle;
+            };
 
             path.transition(t)
                 .tween("data", d => {
@@ -248,8 +275,17 @@ class SunburstChart {
                 .filter(function (d) {
                     return +this.getAttribute("fill-opacity") || isVisible(d);
                 })
-                .attr("fill-opacity", d => isVisible(d) ? (d.children ? 0.9 : 0.7) : 0)
-                .attr("pointer-events", d => isVisible(d) && d.children ? "auto" : "none")
+                .attr("fill-opacity", d => {
+                    if (!isVisible(d)) return 0;
+                    const isLeaf = !d.children || d.children.length === 0;
+                    return isLeaf ? 0.7 : (d.children ? 0.9 : 0.7);
+                })
+                .attr("pointer-events", d => {
+                    if (!isVisible(d)) return "none";
+                    // Enable pointer events for any visible node (with children) or leaf nodes
+                    const isLeaf = !d.children || d.children.length === 0;
+                    return (d.children || isLeaf) ? "auto" : "none";
+                })
                 .attrTween("d", d => () => arc(d.current));
 
             label.transition(t)

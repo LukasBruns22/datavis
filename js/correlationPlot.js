@@ -213,27 +213,36 @@ class CorrelationPlot {
     }
 
 
+// correlationPlot.js
 update(data, attribute, path) {
+    // Always update the navigation to show the user's current location.
+    this.currentPath = path || [];
+    this._renderNavigation();
+
+    // Check if the user has drilled past the 'runtime' level (depth > 3).
+    // If so, freeze the chart by keeping the runtime scatter plot visible.
+    if (path.length > 3) {
+        // Just update navigation but keep showing the last valid plot (runtime)
+        // Don't clear or redraw - this freezes the view
+        return;
+    }
+
+    // The rest of the function will now only run for the levels we want to plot.
     this.chartGroup.selectAll(".plot-element").remove();
     this.chartGroup.selectAll(".trend-line").remove();
     this.yAxisLabel.text("IMDB Rating");
 
-    // The component now accepts its state instead of trying to calculate it.
     this.currentData = data;
     this.currentXAttribute = attribute || 'genre';
-    this.currentPath = path || []; // Set the path directly from the argument
-
-    // With the correct path, the breadcrumbs will now render correctly.
-    this._renderNavigation();
-
+    
     const yValue = d => d.rating;
 
     if (this.currentXAttribute === 'year') {
-    this._updateBoxPlot(data, 'year', yValue);
-    this._hideTrendToggle();
-} else if (attribute === 'other-genres') { // <-- ADD THIS ELSE IF BLOCK
-    this._updateBoxPlot(data, 'other-genres', yValue);
-    this._hideTrendToggle();
+        this._updateBoxPlot(data, 'year', yValue);
+        this._hideTrendToggle();
+    } else if (attribute === 'other-genres') { 
+        this._updateBoxPlot(data, 'other-genres', yValue);
+        this._hideTrendToggle();
     } else if (['runtime', 'rating'].includes(this.currentXAttribute) && data.length > 1) {
         this._updateScatterPlot(data, this.currentXAttribute, yValue);
         this._showTrendToggle();

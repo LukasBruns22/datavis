@@ -13,26 +13,65 @@ const TOP_N_GENRES = 10;
 // These will be defined dynamically inside the data loading block
 let genreColorScale, typeColorScale; 
 
+// main.js
+
 // --- UPDATED Universal color function ---
 function getSharedColor(d) {
-    // Check if we're dealing with a sunburst node which has a 'depth' property
-    if (d.depth) {
-        // If it's the first level (type), use the type color scale
-        if (d.depth === 1) {
-            return typeColorScale(d.data.name);
-        }
-        // For deeper sunburst levels, find the genre and use the genre scale
-        let genre;
-        const genreNode = d.ancestors().find(a => HIERARCHY_LEVELS[a.depth - 1] === 'genre');
-        if (genreNode) {
-            genre = genreNode.data.name;
-        }
-        return genreColorScale(genre) || '#cccccc';
+    // Check if we're dealing with a flat data point (for correlation plot)
+    // These points won't have a 'depth' property.
+    if (d.depth === undefined) {
+        const item = d.data ? d.data : d; // Handles different data structures
+        return genreColorScale(item.genre) || '#cccccc';
     }
 
-    // Otherwise, it's a flat data point (for the correlation plot). Color it by genre.
-    const item = d.data ? d.data : d; // Handles the {data: {genre: ...}} case from box plots
-    return genreColorScale(item.genre) || '#cccccc';
+    // --- Logic for Sunburst Nodes ---
+
+    // 1. Determine the base color (same as your original logic)
+    let baseColor;
+    if (d.depth === 1) {
+        baseColor = typeColorScale(d.data.name);
+    } else {
+        // Find the genre ancestor to maintain color consistency within a genre
+        const genreNode = d.ancestors().find(a => HIERARCHY_LEVELS[a.depth - 1] === 'genre');
+        const genre = genreNode ? genreNode.data.name : 'unknown';
+        baseColor = genreColorScale(genre);
+    }
+
+    // 2. Identify the current level and check if it needs modification
+    const currentLevelName = HIERARCHY_LEVELS[d.depth - 1];
+    const isLeafNode = !d.children || d.children.length === 0;
+
+    // We only apply the brightness effect to 'year', 'runtime', and the final movie titles
+    if (['year', 'runtime', 'rating'].includes(currentLevelName) || isLeafNode) {
+        // Safety check to ensure we have siblings to compare against
+        if (!d.parent || !d.parent.children || d.parent.children.length <= 1) {
+            return baseColor;
+        }
+
+        const siblings = d.parent.children;
+        const nodeIndex = siblings.indexOf(d);
+
+        // 3. Create a linear scale to map the node's index to a brightness factor
+        // The domain is the index range of the siblings.
+        // The range is the brightness modification. We'll go from -0.6 (darker) to 0.6 (brighter).
+        const brightnessScale = d3.scaleLinear()
+            .domain([0, siblings.length - 1])
+            .range([-1, 1]); 
+
+        const modificationAmount = brightnessScale(nodeIndex);
+        const parsedColor = d3.color(baseColor);
+
+        // 4. Apply the modification
+        if (modificationAmount < 0) {
+            // d.darker() takes a value > 0, so we use Math.abs()
+            return parsedColor.darker(Math.abs(modificationAmount));
+        } else {
+            return parsedColor.brighter(modificationAmount);
+        }
+    }
+
+    // For levels we don't modify ('type', 'genre'), return the original base color.
+    return baseColor;
 }
 
 function getRuntimeBin(runtime) {
