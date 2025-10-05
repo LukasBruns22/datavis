@@ -1,5 +1,5 @@
 // --- Global variables for charts, data, and hierarchy definition ---
-let sunburst, correlationPlot;
+let sunburst, correlationPlot, actorAttributeNetwork;
 let flattenedData;
 
 // --- Constants for Hierarchy Generation ---
@@ -11,7 +11,7 @@ const TOP_N_GENRES = 10;
 // ==================================================================
 
 // These will be defined dynamically inside the data loading block
-let genreColorScale, typeColorScale; 
+let genreColorScale, typeColorScale;
 
 // main.js
 
@@ -126,9 +126,9 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
 
     const dispatcher = new Dispatcher();
     const stateManager = new StateManager();
-    
+
     // --- UPDATED: Color Scale Definitions ---
-    
+
     // Calculate top genres dynamically from the data
     const genreCounts = d3.rollup(flattenedData, v => v.length, d => d.genre);
     const sortedGenres = Array.from(genreCounts.entries()).sort((a, b) => b[1] - a[1]).map(d => d[0]);
@@ -146,11 +146,12 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
 
     const hierarchicalData = { name: "Media", children: buildHierarchy(flattenedData, topGenres) };
 
-    
+
 
     // --- 2. Initialize Charts ---
     sunburst = new SunburstChart("#sunburst-container", hierarchicalData, dispatcher, getSharedColor);
     correlationPlot = new CorrelationPlot("#correlation-chart-svg", flattenedData, getSharedColor, topGenres, dispatcher);
+    actorAttributeNetwork = new ActorAttributeNetwork("#network-graph-container", { persons: data.persons, titles: filteredTitles }, dispatcher, getSharedColor);
     const dropdown = new DropdownControl("#dropdown-container", HIERARCHY_LEVELS, dispatcher);
 
     // --- Central Event Listeners ---
@@ -160,15 +161,16 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
         const filtered = stateManager.applyFilters(flattenedData);
 
         let attributeToPlot;
-        if (pathInfo.isGoBack) { attributeToPlot = HIERARCHY_LEVELS[pathInfo.depth - 1]; } 
+        if (pathInfo.isGoBack) { attributeToPlot = HIERARCHY_LEVELS[pathInfo.depth - 1]; }
         else { attributeToPlot = HIERARCHY_LEVELS[pathInfo.depth] || 'rating'; }
         if (!attributeToPlot) { attributeToPlot = HIERARCHY_LEVELS[0]; }
-        
+
         const attributeName = attributeToPlot.charAt(0).toUpperCase() + attributeToPlot.slice(1);
         d3.select("#correlation-title").text(`IMDb Rating vs ${attributeName}`);
-        
+
         correlationPlot.update(filtered, attributeToPlot, currentPath);
         sunburst.update(currentPath);
+        actorAttributeNetwork.update(attributeToPlot);
     });
 
     dispatcher.on('jumpToAttribute', (attribute) => {
@@ -176,14 +178,16 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
         d3.select("#correlation-title").text(`Correlation: IMDb Rating vs ${attributeName}`);
         correlationPlot.update(flattenedData, attribute, []);
         sunburst.update([]);
+        //actorAttributeNetwork.update(attribute);
     });
 
     // --- 3. Initial Draw ---
     sunburst.draw();
     correlationPlot.update(flattenedData, 'type', []);
+    actorAttributeNetwork.update('type');
     dropdown.render();
 
-}).catch(function(error) {
+}).catch(function (error) {
     console.error("Error loading or processing data:", error);
 });
 
@@ -195,50 +199,50 @@ function buildHierarchy(data, topGenres, level = 0) {
             .slice(0, 10)
             .map(d => ({ name: d.title, value: 1, ...d }));
     }
-    
+
     const currentLevel = HIERARCHY_LEVELS[level];
     const dominantGenre = d3.mode(data, d => d.genre);
-    
+
     let childrenNodes;
 
     if (currentLevel === 'genre') {
         const genreBins = new Map();
         const otherData = [];
-        
+
         data.forEach(d => {
             if (topGenres.includes(d.genre)) {
                 if (!genreBins.has(d.genre)) genreBins.set(d.genre, []);
                 genreBins.get(d.genre).push(d);
             } else { otherData.push(d); }
         });
-        
+
         const children = Array.from(genreBins, ([genreName, genreData]) => ({
             name: genreName,
             children: buildHierarchy(genreData, topGenres, level + 1)
         }));
-        
+
         children.sort((a, b) => topGenres.indexOf(a.name) - topGenres.indexOf(b.name));
 
         if (otherData.length > 0) {
             children.push({ name: "Other", children: buildHierarchy(otherData, topGenres, level + 1) });
         }
-        
-        childrenNodes = children.map(child => ({ 
+
+        childrenNodes = children.map(child => ({
             ...child,
             avgRating: d3.mean(child.children, d => d.avgRating),
-            type: d3.mode(data, d => d.type), 
-            genre: child.name 
+            type: d3.mode(data, d => d.type),
+            genre: child.name
         }));
 
     } else {
         let grouped;
         if (["runtime", "rating", "year"].includes(currentLevel)) {
-            if (currentLevel === "rating") { grouped = d3.group(data, d => getRatingBin(d.rating)); } 
-                else if (currentLevel === "runtime") {
+            if (currentLevel === "rating") { grouped = d3.group(data, d => getRatingBin(d.rating)); }
+            else if (currentLevel === "runtime") {
                 grouped = d3.group(data, d => getRuntimeBin(d.runtime));
             } else if (currentLevel === "year") { grouped = d3.group(data, d => getYearBin(d.year)); }
         } else { grouped = d3.group(data, d => d[currentLevel]); }
-        
+
         childrenNodes = Array.from(grouped, ([key, values]) => ({
             name: key,
             children: buildHierarchy(values, topGenres, level + 1),
@@ -248,7 +252,7 @@ function buildHierarchy(data, topGenres, level = 0) {
         }));
     }
 
-    const ratingOrder = [ "Excellent (9.0-10.0)", "Great (8.0-8.9)", "Good (7.0-7.9)", "Average (6.0-6.9)", "Below Average (<6.0)" ];
+    const ratingOrder = ["Excellent (9.0-10.0)", "Great (8.0-8.9)", "Good (7.0-7.9)", "Average (6.0-6.9)", "Below Average (<6.0)"];
 
     if (currentLevel === 'rating') {
         return childrenNodes.sort((a, b) => ratingOrder.indexOf(a.name) - ratingOrder.indexOf(b.name));
