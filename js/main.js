@@ -99,26 +99,29 @@ function getRatingBin(rating) {
 
 // --- 1. Load and Process Data ---
 d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
-    // Flatten the data
-    flattenedData = [];
-    
-    data.titles.forEach(item => {
-        if ((item.titleType === 'movie' || item.titleType === 'tvSeries') && item.genres && item.genres.length > 0 && item.runtimeMinutes && item.averageRating && item.startYear) {
-            item.genres.forEach(genre => {
-                flattenedData.push({
-                    type: item.titleType,
-                    genre: genre,
-                    year: +item.startYear,
-                    runtime: +item.runtimeMinutes,
-                    rating: +item.averageRating,
-                    title: item.originalTitle
-                });
-            });
-        }
-    });
 
-    
-    flattenedData = flattenedData.filter(d => d.year <= 2024);
+    const filteredTitles = data.titles.filter(item =>
+        (item.titleType === 'movie' || item.titleType === 'tvSeries') &&
+        item.genres && item.genres.length > 0 &&
+        item.runtimeMinutes &&
+        item.averageRating &&
+        item.startYear
+    );
+
+    flattenedData = [];
+
+    filteredTitles.forEach(item => {
+        item.genres.forEach(genre => {
+            flattenedData.push({
+                type: item.titleType,
+                genre: genre,
+                year: +item.startYear,
+                runtime: +item.runtimeMinutes,
+                rating: +item.averageRating,
+                title: item.originalTitle
+            });
+        });
+    });
     
 
     const dispatcher = new Dispatcher();
