@@ -1,19 +1,28 @@
-// --- Global variables for charts, data, and hierarchy definition ---
+import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+import { Dispatcher } from "./dispatcher.js";
+import { DropdownControl } from "./dropdown.js";
+import { SunburstChart } from "./sunburst.js";
+import { CorrelationPlot } from "./correlationPlot.js";
+import { ActorAttributeNetwork } from "./actorAttributeNetwork.js";
+import { StateManager } from "./stateManager.js";
+import { getYearBin, getRuntimeBin, getRatingBin } from "./helper.js";
+const HIERARCHY_LEVELS = ["type", "genre", "year", "runtime", "rating"];
+
+
+// global variables for charts, data, and hierarchy definition
 let sunburst, correlationPlot, actorAttributeNetwork;
 let flattenedData;
 
-// --- Constants for Hierarchy Generation ---
-const HIERARCHY_LEVELS = ["type", "genre", "year", "runtime", "rating"];
+// constants for Hierarchy Generation ---
 const TOP_N_GENRES = 10;
-
-// ==================================================================
-// === SINGLE SOURCE OF TRUTH FOR COLORS ============================
-// ==================================================================
 
 // These will be defined dynamically inside the data loading block
 let genreColorScale, typeColorScale;
 
-// main.js
+window.scaledFont = function(px) {
+  const scale = window.devicePixelRatio || 1;
+  return `${px / scale}px`;
+};
 
 // --- UPDATED Universal color function ---
 function getSharedColor(d) {
@@ -74,29 +83,6 @@ function getSharedColor(d) {
     return baseColor;
 }
 
-function getRuntimeBin(runtime) {
-    if (runtime >= 180) return "Epic (> 180 min)";
-    if (runtime >= 120) return "Long (120-179 min)";
-    if (runtime >= 45) return "Standard (45-119 min)";
-    return "Short (< 45 min)";
-}
-
-// --- Helper for 5-year bins ---
-function getYearBin(year) {
-    const startYear = Math.floor(year / 5) * 5;
-    const endYear = startYear + 4;
-    return `${startYear} - ${endYear}`;
-}
-
-// --- Helper for human-readable rating bins ---
-function getRatingBin(rating) {
-    if (rating >= 9) return "Excellent (9.0-10.0)";
-    if (rating >= 8) return "Great (8.0-8.9)";
-    if (rating >= 7) return "Good (7.0-7.9)";
-    if (rating >= 6) return "Average (6.0-6.9)";
-    return "Below Average (<6.0)";
-}
-
 // --- 1. Load and Process Data ---
 d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
 
@@ -105,7 +91,8 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
         item.genres && item.genres.length > 0 &&
         item.runtimeMinutes &&
         item.averageRating &&
-        item.startYear
+        item.startYear && 
+        item.startYear < 2025
     );
 
     flattenedData = [];
@@ -139,20 +126,26 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
         .range(d3.schemeTableau10)
         .unknown("#cccccc");
 
-    // Create a separate, distinct color scale for 'movie' and 'tvSeries'
     typeColorScale = d3.scaleOrdinal()
-        .domain(['tvSeries', 'movie']) // <-- THIS IS THE CHANGED LINE
-        .range(['#1f77b4', '#ff7f0e']); // Range is blue, then orange
+        .domain(['tvSeries', 'movie'])
+        .range(['#1f77b4', '#ff7f0e']);
+
+    const ratingColorScale = d3.scaleLinear()
+        .domain([8, 10])
+        .range(["#89d7a7ff", "#145a32"]);
+
+    stateManager.setColorScales(genreColorScale, typeColorScale, ratingColorScale);
+    stateManager.setTopGenres(topGenres)
 
     const hierarchicalData = { name: "Media", children: buildHierarchy(flattenedData, topGenres) };
 
 
 
     // --- 2. Initialize Charts ---
-    sunburst = new SunburstChart("#sunburst-container", hierarchicalData, dispatcher, getSharedColor);
-    correlationPlot = new CorrelationPlot("#correlation-chart-svg", flattenedData, getSharedColor, topGenres, dispatcher);
-    actorAttributeNetwork = new ActorAttributeNetwork("#network-graph-container", { persons: data.persons, titles: filteredTitles }, dispatcher, getSharedColor);
-    const dropdown = new DropdownControl("#dropdown-container", HIERARCHY_LEVELS, dispatcher);
+    sunburst = new SunburstChart("#sunburst-container", hierarchicalData, dispatcher, stateManager, getSharedColor);
+    correlationPlot = new CorrelationPlot("#correlation-chart-svg", flattenedData, stateManager, topGenres, dispatcher);
+    actorAttributeNetwork = new ActorAttributeNetwork("#network-graph-container", { persons: data.persons, titles: filteredTitles }, dispatcher, stateManager);
+    const dropdown = new DropdownControl("#dropdown-container", HIERARCHY_LEVELS, dispatcher, stateManager);
 
     // --- Central Event Listeners ---
     dispatcher.on('pathChange', (pathInfo) => {
@@ -167,9 +160,10 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
 
         const attributeName = attributeToPlot.charAt(0).toUpperCase() + attributeToPlot.slice(1);
         d3.select("#correlation-title").text(`IMDb Rating vs ${attributeName}`);
+        d3.select("#network-title").text(`Actor-${attributeName} Network`);
 
         correlationPlot.update(filtered, attributeToPlot, currentPath);
-        sunburst.update(currentPath);
+        sunburst.update(currentPath, attributeToPlot);
         actorAttributeNetwork.update(attributeToPlot);
     });
 
@@ -178,7 +172,7 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
         d3.select("#correlation-title").text(`Correlation: IMDb Rating vs ${attributeName}`);
         correlationPlot.update(flattenedData, attribute, []);
         sunburst.update([]);
-        //actorAttributeNetwork.update(attribute);
+        actorAttributeNetwork.update(attribute);
     });
 
     // --- 3. Initial Draw ---
