@@ -1,11 +1,14 @@
-class CorrelationPlot {
-    constructor(svgSelector, initialData, colorFunction, topGenres, dispatcher) {
+import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+import { getYearBin, getColor, BINNING_FUNCTIONS } from "./helper.js";
+
+export class CorrelationPlot {
+    constructor(svgSelector, initialData, stateManager, topGenres, dispatcher) {
         this.svg = d3.select(svgSelector);
         this.data = initialData;
-        this.color = colorFunction;
+        this.stateManager = stateManager
         this.topGenres = topGenres;
         this.dispatcher = dispatcher; // Store the dispatcher
-        this.margin = { top: 120, right: 30, bottom: 70, left: 80 };
+        this.margin = { top: 70, right: 15, bottom: 35, left: 40 };
         this.showTrendLine = false;
         this.currentPath = []; // Track the drill-down path
         this.hierarchyLevels = ['type', 'genre', 'year', 'runtime']; // Define hierarchy
@@ -25,14 +28,14 @@ class CorrelationPlot {
         this.xAxisLabel = this.chartGroup.append("text")
             .attr("class", "axis-label")
             .style("text-anchor", "middle")
-            .style("font-size", "35px")
+            .style("font-size", scaledFont(20))
             .style("font-weight", "bold")
             .style("fill", "#333");
             
         this.yAxisLabel = this.chartGroup.append("text")
             .attr("class", "axis-label")
             .style("text-anchor", "middle")
-            .style("font-size", "35px")
+            .style("font-size", scaledFont(20))
             .style("font-weight", "bold")
             .style("fill", "#333");
 
@@ -45,7 +48,7 @@ class CorrelationPlot {
         this.trendToggleText = this.trendToggleButton.append("text")
             .attr("text-anchor", "middle")
             .style("dominant-baseline", "middle")
-            .style("font-size", "35px")
+            .style("font-size", scaledFont(15))
             .style("font-weight", "600")
             .style("fill", "#495057")
             .text("Show Trend Line");
@@ -54,16 +57,16 @@ class CorrelationPlot {
         const textBBox = this.trendToggleText.node().getBBox();
         
         // Standardize button size based on the trend toggle button
-        this.uniformButtonWidth = textBBox.width + padding.x * 2;
-        this.uniformButtonHeight = textBBox.height + padding.y * 2;
+        this.uniformButtonWidth = textBBox.width + padding.x;
+        this.uniformButtonHeight = textBBox.height + padding.y;
 
         this.trendToggleText.attr("x", this.uniformButtonWidth / 2).attr("y", this.uniformButtonHeight / 2);
 
         this.trendToggleButton.insert("rect", "text")
             .attr("width", this.uniformButtonWidth)
             .attr("height", this.uniformButtonHeight)
-            .attr("rx", 15)
-            .attr("ry", 15)
+            .attr("rx", 10)
+            .attr("ry", 10)
             .style("fill", "#f8f9fa")
             .style("stroke", "#dee2e6")
             .style("stroke-width", 1);
@@ -95,9 +98,9 @@ class CorrelationPlot {
             .style("position", "absolute")
             .style("background", "rgba(0, 0, 0, 0.85)")
             .style("color", "#f8f9fa")
-            .style("padding", "30px 50px")
-            .style("border-radius", "10px")
-            .style("font-size", "35px")
+            .style("padding", `${scaledFont(20)} ${scaledFont(30)}`)
+            .style("border-radius", scaledFont(10))
+            .style("font-size", scaledFont(20))
             .style("font-family", "'Segoe UI', sans-serif")
             .style("box-shadow", "0 6px 35px rgba(0,0,0,0.45)")
             .style("pointer-events", "none")
@@ -111,12 +114,12 @@ class CorrelationPlot {
 
         if (this.currentPath.length === 0) return;
 
-        const buttonPadding = { x: 12, y: 6 };
+        const buttonPadding = { x: 12, y: 20 };
         const buttonSpacing = 10;
         const arrowSpacing = 14;
 
-        let xPos = this.margin.left;
-        const yPos = this.margin.top - 100;
+        let xPos = 0;
+        const yPos = this.margin.top - 50;
 
         this.currentPath.forEach((levelValue, i) => {
             // Get the name of the hierarchy level (e.g., 'type', 'genre')
@@ -137,14 +140,14 @@ class CorrelationPlot {
                 .style("cursor", "pointer");
 
             const rect = group.append("rect")
-                .attr("rx", 15).attr("ry", 15)
+                .attr("rx", 10).attr("ry", 10)
                 .style("fill", "#f8f9fa").style("stroke", "#dee2e6")
                 .style("stroke-width", 1).style("transition", "fill 0.2s ease-in-out");
 
             const text = group.append("text")
                 .text(label)
                 .attr("text-anchor", "middle")
-                .style("font-size", "35px")
+                .style("font-size", scaledFont(15))
                 .style("font-weight", "600").style("fill", "#333333");
             
             // Apply the uniform button size
@@ -207,8 +210,8 @@ class CorrelationPlot {
         this.height = containerHeight - this.margin.top - this.margin.bottom;
         this.chartGroup.attr("transform", `translate(${this.margin.left}, ${this.margin.top})`);
         this.xAxisGroup.attr("transform", `translate(0, ${this.height})`);
-        this.xAxisLabel.attr("transform", `translate(${this.width / 2}, ${this.height + 65})`);
-        this.yAxisLabel.attr("transform", `translate(-75, ${this.height / 2}) rotate(-90)`);
+        this.xAxisLabel.attr("transform", `translate(${this.width / 2}, ${this.height + 30})`);
+        this.yAxisLabel.attr("transform", `translate(-40, ${this.height / 2}) rotate(-90)`);
         this.trendToggleButton.attr("transform", `translate(${containerWidth - 255}, ${this.margin.top - 100})`);
     }
 
@@ -268,16 +271,16 @@ update(data, attribute, path) {
         xAxis.tickValues(xTicks);
         this.xAxisGroup.transition().duration(500).call(xAxis);
         this.yAxisGroup.transition().duration(500).call(yAxis);
-        this.xAxisGroup.selectAll("text").style("font-size", "30px").style("fill", "#333");
-        this.yAxisGroup.selectAll("text").style("font-size", "30px").style("fill", "#333");
+        this.xAxisGroup.selectAll("text").style("font-size", scaledFont(15)).style("fill", "#333");
+        this.yAxisGroup.selectAll("text").style("font-size", scaledFont(15)).style("fill", "#333");
         this.chartGroup.selectAll(".plot-element")
             .data(data)
             .join("circle")
             .attr("class", "plot-element")
             .attr("cx", d => this.xScale(xValue(d)))
             .attr("cy", d => this.yScale(yValue(d)))
-            .attr("r", 12)
-            .style("fill", d => this.color(d))
+            .attr("r", 6)
+            .style("fill", d => getColor(BINNING_FUNCTIONS[xAttribute](d[xAttribute]), this.stateManager))
             .style("opacity", 1)
             .style("stroke", "black")
             .style("stroke-width", 0.5)
@@ -371,8 +374,8 @@ update(data, attribute, path) {
     this.xAxisGroup.transition().duration(500).call(xAxis);
     this.yAxisGroup.transition().duration(500).call(yAxis);
 
-    this.xAxisGroup.selectAll("text").style("font-size", "30px").style("fill", "#333");
-    this.yAxisGroup.selectAll("text").style("font-size", "30px").style("fill", "#333");
+    this.xAxisGroup.selectAll("text").style("font-size", scaledFont(15)).style("fill", "#333");
+    this.yAxisGroup.selectAll("text").style("font-size", scaledFont(15)).style("fill", "#333");
 
     const boxGroup = this.chartGroup.selectAll(".box-group")
         .data(stats, d => d.key)
@@ -394,7 +397,7 @@ update(data, attribute, path) {
 
             this.tooltip.transition().duration(200).style("opacity", 1);
             this.tooltip.html(`
-                <div style="font-weight:700; font-size:35px; margin-bottom:8px; color:#fff;">${header}</div>
+                <div style="font-weight:700; font-size:${scaledFont(20)}; margin-bottom:8px; color:#fff;">${header}</div>
                 <div style="border-top:1px solid rgba(255,255,255,0.08); margin:6px 0;"></div>
                 <div style="color:#fff; font-weight:700; margin-bottom:4px;">📊 Statistics</div>
                 <div style="color:#f1f3f5">🔢 Count: ${d.count.toLocaleString()}</div>
@@ -456,7 +459,7 @@ update(data, attribute, path) {
         .attr("width", this.xScale.bandwidth())
         .attr("height", d => this.yScale(d.q1) - this.yScale(d.q3))
         .attr("stroke", "#888").attr("stroke-width", 1)
-        .style("fill", d => this.color({ data: { genre: d.dominantGenre } })) // Corrected fill call
+        .style("fill", d => getColor(d.key, this.stateManager)) // Corrected fill call
         .style("transition", "all 0.15s ease");
 
     boxGroup.append("line")

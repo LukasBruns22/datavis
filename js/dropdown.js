@@ -1,4 +1,6 @@
-class DropdownControl {
+import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+
+export class DropdownControl {
     /**
      * @param {string} selector - The CSS selector for the container div.
      * @param {string[]} attributes - The array of attribute names for the options.

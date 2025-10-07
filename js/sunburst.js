@@ -1,8 +1,12 @@
-class SunburstChart {
-    constructor(selector, data, dispatcher, colorFunction) {
+import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+import { getColor, HIERARCHY_LEVELS } from "./helper.js";
+
+export class SunburstChart {
+    constructor(selector, data, dispatcher, stateManager, colorFunction) {
         this.selector = selector;
         this.data = data;
         this.dispatcher = dispatcher;
+        this.stateManager = stateManager
         this.color = colorFunction;
     }
 
@@ -125,7 +129,8 @@ class SunburstChart {
             .selectAll("path")
             .data(root.descendants().slice(1))
             .join("path")
-            .attr("fill", d => this.color(d))
+            .attr("fill", d => 
+                this.color(d) )
             .attr("fill-opacity", d => (d.depth === 1) ? (d.children ? 0.9 : 0.7) : 0)
             .attr("pointer-events", d => (d.depth === 1) ? "auto" : "none")
             .attr("d", d => arc(d.current))
@@ -200,7 +205,7 @@ class SunburstChart {
             .attr("dy", "0.35em")
             .attr("fill-opacity", d => (d.depth === 1) ? 1 : 0)
             .attr("transform", d => labelTransform(d.current))
-            .style("font-size", d => d.depth > 3 ? "24px" : "35px")
+            .style("font-size", d => d.depth > 3 ? scaledFont(15) : scaledFont(20))
             .style("font-weight", d => d.depth === 1 ? "bold" : "normal")
             .text(d => formatName(d.data.name));
 
@@ -222,7 +227,7 @@ class SunburstChart {
             .attr("dy", "0.35em")
             .style("font-weight", "bold")
             .style("pointer-events", "none")
-            .style("font-size", "35px")
+            .style("font-size", scaledFont(20))
             .text("Media");
 
         function clicked(event, p, isProgrammatic = false) {
@@ -306,11 +311,11 @@ class SunburstChart {
         this.zoomToNode = clicked;
     }
 
-    updateColors() {
-        d3.select(this.selector)
-            .selectAll("path")
-            .attr("fill", d => this.color(d));
-    }
+    // updateColors() {
+    //     d3.select(this.selector)
+    //         .selectAll("path")
+    //         .attr("fill", d => this.color(d));
+    // }
 
     update(path) {
         if (!this.rootNode || !this.zoomToNode) {
