@@ -47,7 +47,7 @@ class SunburstChart {
         const containerHeight = d3.select(this.selector).node().getBoundingClientRect().height;
         const width = Math.min(containerWidth, containerHeight);
         const height = width;
-        const chartYOffset = 150; 
+        const chartYOffset = 200; 
 
         const hierarchy = d3.hierarchy(data)
             .sum(d => d.value || 0)
@@ -117,13 +117,13 @@ class SunburstChart {
 
         const svg = d3.select(this.selector).append("svg")
             // MODIFIED: Increased viewBox height to prevent legend clipping
-            .attr("viewBox", [-width / 2, -height / 2, width, height + chartYOffset + 200])
+            .attr("viewBox", [-width / 2, -height / 2, width, height + chartYOffset + 240])
             .style("font", "10px sans-serif");
         
         const legendGroup = svg.append("g")
             .attr("class", "legend")
             // MODIFIED: Moved legend further down
-            .attr("transform", `translate(${-width / 2 + 20}, ${outerRadius + 180})`);
+            .attr("transform", `translate(${-width / 2 + 20}, ${outerRadius + 220})`);
 
         function drawLegend(p) {
             legendGroup.selectAll("*").remove(); 
@@ -133,7 +133,7 @@ class SunburstChart {
             const legendSpacing = 15;
 
             switch (level) {
-                case 0: // Viewing Media Types
+                case 0:
                     const typeData = ["movie", "tvSeries"];
                     legendGroup.selectAll(".legend-item")
                         .data(typeData)
@@ -144,7 +144,7 @@ class SunburstChart {
                         .call(g => g.append("text").attr("x", legendItemSize + legendSpacing).attr("y", legendItemSize / 2).attr("dy", "0.35em").text(d => formatName(d)).style("font-size", "35px"));
                     break;
                 
-                case 1: // Viewing Genres
+                case 1:
                     const genreData = [...self.topGenres, "Other"];
                     legendGroup.selectAll(".legend-item")
                         .data(genreData)
@@ -154,7 +154,7 @@ class SunburstChart {
                         .call(g => g.append("text").attr("x", legendItemSize + legendSpacing).attr("y", legendItemSize / 2).attr("dy", "0.35em").text(d => d).style("font-size", "35px"));
                     break;
 
-                case 2: case 3: case 4: // Viewing Year, Runtime, or Rating
+                case 2: case 3: case 4:
                     const children = p.children;
                     if (!children || children.length === 0) break; 
 
@@ -205,11 +205,11 @@ class SunburstChart {
 
             const pathNodes = p.ancestors().reverse();
             const pathArray = pathNodes.map(d => formatName(d.data.name));
-
-            const buttonHeight = 50;
-            const buttonPadding = 20;
-            const arrowSpacing = 30;
-            const rowSpacing = 15;
+            
+            const buttonHeight = 68;
+            const buttonPadding = 27;
+            const arrowSpacing = 40;
+            const rowSpacing = 20;
             const availableWidth = width - 40;
             let xPos = 0;
             let yPos = 0;
@@ -217,7 +217,7 @@ class SunburstChart {
             pathArray.forEach((name, i) => {
                 const node = pathNodes[i];
                 
-                const tempText = breadcrumbGroup.append("text").text(name).style("font-size", "30px").style("font-weight", "600");
+                const tempText = breadcrumbGroup.append("text").text(name).style("font-size", "40px").style("font-weight", "600");
                 const textWidth = tempText.node().getBBox().width;
                 tempText.remove();
                 const buttonWidth = textWidth + 2 * buttonPadding;
@@ -253,7 +253,7 @@ class SunburstChart {
                     .attr("x", buttonPadding)
                     .attr("y", buttonHeight / 2)
                     .attr("dy", "0.35em")
-                    .style("font-size", "30px").style("font-weight", "600").style("fill", "#333");
+                    .style("font-size", "40px").style("font-weight", "600").style("fill", "#333");
 
                 xPos += buttonWidth;
 
@@ -263,7 +263,7 @@ class SunburstChart {
                         .attr("transform", `translate(${xPos + arrowSpacing / 2}, ${yPos + buttonHeight / 2})`)
                         .attr("dy", "0.35em")
                         .attr("text-anchor", "middle")
-                        .style("font-size", "35px").style("fill", "#888");
+                        .style("font-size", "47px").style("fill", "#888");
                     
                     xPos += arrowSpacing;
                 }
