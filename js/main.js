@@ -11,9 +11,7 @@ const TOP_N_GENRES = 10;
 // ==================================================================
 
 // These will be defined dynamically inside the data loading block
-let genreColorScale, typeColorScale; 
-
-// main.js
+let genreColorScale, typeColorScale;
 
 // --- UPDATED Universal color function ---
 function getSharedColor(d) {
@@ -56,7 +54,7 @@ function getSharedColor(d) {
         // The range is the brightness modification. We'll go from -0.6 (darker) to 0.6 (brighter).
         const brightnessScale = d3.scaleLinear()
             .domain([0, siblings.length - 1])
-            .range([-1, 1]); 
+            .range([-1, 1]);
 
         const modificationAmount = brightnessScale(nodeIndex);
         const parsedColor = d3.color(baseColor);
@@ -141,15 +139,23 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
 
     // Create a separate, distinct color scale for 'movie' and 'tvSeries'
     typeColorScale = d3.scaleOrdinal()
-        .domain(['tvSeries', 'movie']) // <-- THIS IS THE CHANGED LINE
-        .range(['#1f77b4', '#ff7f0e']); // Range is blue, then orange
+        .domain(['movie', 'tvSeries'])
+        .range(['#ff7f0e', '#1f77b4']);
 
     const hierarchicalData = { name: "Media", children: buildHierarchy(flattenedData, topGenres) };
 
-    
-
     // --- 2. Initialize Charts ---
-    sunburst = new SunburstChart("#sunburst-container", hierarchicalData, dispatcher, getSharedColor);
+    // MODIFIED: Pass all scales and hierarchy info to the SunburstChart constructor
+    sunburst = new SunburstChart(
+        "#sunburst-container", 
+        hierarchicalData, 
+        dispatcher, 
+        getSharedColor, 
+        topGenres, 
+        genreColorScale,
+        HIERARCHY_LEVELS,
+        typeColorScale
+    );
     correlationPlot = new CorrelationPlot("#correlation-chart-svg", flattenedData, getSharedColor, topGenres, dispatcher);
     const dropdown = new DropdownControl("#dropdown-container", HIERARCHY_LEVELS, dispatcher);
 

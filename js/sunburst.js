@@ -1,9 +1,13 @@
 class SunburstChart {
-    constructor(selector, data, dispatcher, colorFunction) {
+    constructor(selector, data, dispatcher, colorFunction, topGenres, genreColorScale, hierarchyLevels, typeColorScale) {
         this.selector = selector;
         this.data = data;
         this.dispatcher = dispatcher;
         this.color = colorFunction;
+        this.topGenres = topGenres;
+        this.genreColorScale = genreColorScale;
+        this.hierarchyLevels = hierarchyLevels;
+        this.typeColorScale = typeColorScale;
     }
 
     draw() {
@@ -35,15 +39,15 @@ class SunburstChart {
             .style('max-width', '450px')
             .style('transition', 'opacity 0.2s')
             .style('box-shadow', '0 4px 8px rgba(0,0,0,0.2)');
-
+        
         // --- CHART SETUP ---
         const self = this;
         const data = this.data;
-
         const containerWidth = d3.select(this.selector).node().getBoundingClientRect().width;
         const containerHeight = d3.select(this.selector).node().getBoundingClientRect().height;
         const width = Math.min(containerWidth, containerHeight);
         const height = width;
+        const chartYOffset = 150; 
 
         const hierarchy = d3.hierarchy(data)
             .sum(d => d.value || 0)
@@ -82,9 +86,7 @@ class SunburstChart {
             });
         
         const root = hierarchy;
-        root.x0 = 0;
-        root.x1 = 2 * Math.PI;
-
+        root.x0 = 0; root.x1 = 2 * Math.PI;
         root.eachBefore(d => {
             d.y0 = d.depth;
             d.y1 = d.depth + 1;
@@ -100,28 +102,177 @@ class SunburstChart {
                 }
             }
         });
-        
         root.each(d => d.current = d);
         
         this.rootNode = root;
 
         const outerRadius = (width / 2) * 0.98;
+        this.outerRadius = outerRadius;
         const ringThickness = outerRadius * 0.6;
         const innerRadius = outerRadius - ringThickness;
     
         const arc = d3.arc()
-            .startAngle(d => d.x0)
-            .endAngle(d => d.x1)
-            .padAngle(0)
-            .innerRadius(innerRadius)
-            .outerRadius(outerRadius);
+            .startAngle(d => d.x0).endAngle(d => d.x1)
+            .padAngle(0).innerRadius(innerRadius).outerRadius(outerRadius);
 
         const svg = d3.select(this.selector).append("svg")
-            .attr("viewBox", [-width / 2, -height / 2, width, width])
+            // MODIFIED: Increased viewBox height to prevent legend clipping
+            .attr("viewBox", [-width / 2, -height / 2, width, height + chartYOffset + 200])
             .style("font", "10px sans-serif");
         
-        // --- PATHS & MOUSE EVENTS ---
-        const path = svg.append("g")
+        const legendGroup = svg.append("g")
+            .attr("class", "legend")
+            // MODIFIED: Moved legend further down
+            .attr("transform", `translate(${-width / 2 + 20}, ${outerRadius + 180})`);
+
+        function drawLegend(p) {
+            legendGroup.selectAll("*").remove(); 
+
+            const level = p.depth;
+            const legendItemSize = 45;
+            const legendSpacing = 15;
+
+            switch (level) {
+                case 0: // Viewing Media Types
+                    const typeData = ["movie", "tvSeries"];
+                    legendGroup.selectAll(".legend-item")
+                        .data(typeData)
+                        .join("g")
+                        .attr("class", "legend-item")
+                        .attr("transform", (d, i) => `translate(0, ${i * (legendItemSize + legendSpacing)})`)
+                        .call(g => g.append("rect").attr("width", legendItemSize).attr("height", legendItemSize).attr("rx", 8).style("fill", d => self.typeColorScale(d)))
+                        .call(g => g.append("text").attr("x", legendItemSize + legendSpacing).attr("y", legendItemSize / 2).attr("dy", "0.35em").text(d => formatName(d)).style("font-size", "35px"));
+                    break;
+                
+                case 1: // Viewing Genres
+                    const genreData = [...self.topGenres, "Other"];
+                    legendGroup.selectAll(".legend-item")
+                        .data(genreData)
+                        .join("g")
+                        .attr("transform", (d, i) => `translate(${(i % 5) * (width / 5)}, ${Math.floor(i / 5) * (legendItemSize + legendSpacing)})`)
+                        .call(g => g.append("rect").attr("width", legendItemSize).attr("height", legendItemSize).attr("rx", 8).style("fill", d => self.genreColorScale(d)))
+                        .call(g => g.append("text").attr("x", legendItemSize + legendSpacing).attr("y", legendItemSize / 2).attr("dy", "0.35em").text(d => d).style("font-size", "35px"));
+                    break;
+
+                case 2: case 3: case 4: // Viewing Year, Runtime, or Rating
+                    const children = p.children;
+                    if (!children || children.length === 0) break; 
+
+                    const baseColor = self.genreColorScale(p.ancestors().find(a => self.hierarchyLevels[a.depth-1] === 'genre')?.data.name);
+
+                    const brightnessScale = d3.scaleLinear().domain([0, children.length - 1]).range([-1, 1]);
+
+                    const colorData = d3.range(children.length).map(i => {
+                        const mod = brightnessScale(i);
+                        const parsed = d3.color(baseColor);
+                        return (mod < 0) ? parsed.darker(Math.abs(mod)) : parsed.brighter(mod);
+                    });
+
+                    const rectWidth = Math.max(10, (width - 100) / colorData.length);
+                    const rectHeight = 45;
+
+                    legendGroup.selectAll(".legend-swatch")
+                        .data(colorData)
+                        .join("rect")
+                        .attr("class", "legend-swatch")
+                        .attr("x", (d, i) => i * rectWidth)
+                        .attr("y", 0)
+                        .attr("width", rectWidth)
+                        .attr("height", rectHeight)
+                        .style("fill", d => d);
+                    
+                    const nextLevel = self.hierarchyLevels[level];
+                    let startLabel = "", endLabel = "";
+                    if (nextLevel === 'year') { startLabel = "Older"; endLabel = "Newer"; }
+                    else if (nextLevel === 'runtime') { startLabel = "Shorter"; endLabel = "Longer"; }
+                    else if (nextLevel === 'rating') { startLabel = "Lower Rating"; endLabel = "Higher Rating"; }
+
+                    legendGroup.append("text").text(startLabel).attr("y", rectHeight + 30).style("font-size", "28px");
+                    legendGroup.append("text").text(endLabel).attr("x", colorData.length * rectWidth).attr("y", rectHeight + 30).attr("text-anchor", "end").style("font-size", "28px");
+                    break;
+
+                default: 
+                    break; 
+            }
+        }
+
+        const breadcrumbGroup = svg.append("g")
+            .attr("class", "breadcrumb-group")
+            .attr("transform", `translate(${-width / 2 + 20}, ${-height / 2 + 20})`);
+        
+        function renderBreadcrumbs(p) {
+            breadcrumbGroup.selectAll("*").remove();
+
+            const pathNodes = p.ancestors().reverse();
+            const pathArray = pathNodes.map(d => formatName(d.data.name));
+
+            const buttonHeight = 50;
+            const buttonPadding = 20;
+            const arrowSpacing = 30;
+            const rowSpacing = 15;
+            const availableWidth = width - 40;
+            let xPos = 0;
+            let yPos = 0;
+
+            pathArray.forEach((name, i) => {
+                const node = pathNodes[i];
+                
+                const tempText = breadcrumbGroup.append("text").text(name).style("font-size", "30px").style("font-weight", "600");
+                const textWidth = tempText.node().getBBox().width;
+                tempText.remove();
+                const buttonWidth = textWidth + 2 * buttonPadding;
+
+                const nextElementWidth = buttonWidth + (i < pathArray.length - 1 ? arrowSpacing : 0);
+                if (xPos > 0 && xPos + nextElementWidth > availableWidth) {
+                    xPos = 0;
+                    yPos += buttonHeight + rowSpacing;
+                }
+
+                const buttonGroup = breadcrumbGroup.append("g")
+                    .attr("transform", `translate(${xPos}, ${yPos})`)
+                    .style("cursor", "pointer")
+                    .on("click", (event) => {
+                        if (i === pathNodes.length - 1 && i > 0) {
+                            const parentNode = pathNodes[i - 1];
+                            clicked(event, parentNode);
+                        } else {
+                            clicked(event, node);
+                        }
+                    })
+                    .on("mouseover", function() { d3.select(this).select("rect").style("fill", "#e9ecef"); })
+                    .on("mouseout", function() { d3.select(this).select("rect").style("fill", "#f8f9fa"); });
+
+                buttonGroup.append("rect")
+                    .attr("width", buttonWidth)
+                    .attr("height", buttonHeight)
+                    .attr("rx", 8).attr("ry", 8)
+                    .style("fill", "#f8f9fa").style("stroke", "#dee2e6");
+
+                buttonGroup.append("text")
+                    .text(name)
+                    .attr("x", buttonPadding)
+                    .attr("y", buttonHeight / 2)
+                    .attr("dy", "0.35em")
+                    .style("font-size", "30px").style("font-weight", "600").style("fill", "#333");
+
+                xPos += buttonWidth;
+
+                if (i < pathArray.length - 1) {
+                    breadcrumbGroup.append("text")
+                        .text("→")
+                        .attr("transform", `translate(${xPos + arrowSpacing / 2}, ${yPos + buttonHeight / 2})`)
+                        .attr("dy", "0.35em")
+                        .attr("text-anchor", "middle")
+                        .style("font-size", "35px").style("fill", "#888");
+                    
+                    xPos += arrowSpacing;
+                }
+            });
+        }
+        
+        const chartGroup = svg.append("g").attr("transform", `translate(0, ${chartYOffset})`);
+        
+        const path = chartGroup.append("g")
             .selectAll("path")
             .data(root.descendants().slice(1))
             .join("path")
@@ -130,15 +281,12 @@ class SunburstChart {
             .attr("pointer-events", d => (d.depth === 1) ? "auto" : "none")
             .attr("d", d => arc(d.current))
             .style("cursor", d => d.children ? "pointer" : "default")
-            
             .on("mouseover", function(event, d) {
                 tooltip.transition().duration(200).style("opacity", 1);
                 
-                // Check if this is a leaf node (individual movie/show)
                 const isLeaf = !d.children || d.children.length === 0;
                 
                 if (isLeaf && d.data.title) {
-                    // Show detailed movie/show information for leaf nodes
                     tooltip.html(`
                         <div style="font-size: 40px; font-weight: bold; color: #fff; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #555;">
                             ${d.data.title}
@@ -152,7 +300,6 @@ class SunburstChart {
                         </div>
                     `);
                 } else {
-                    // Show aggregated information for non-leaf nodes
                     const ancestorNames = d.ancestors().map(a => a.data.name).reverse();
                     const currentSegment = ancestorNames.pop();
                     const displayAncestors = ancestorNames.map(n => formatName(n));
@@ -187,9 +334,10 @@ class SunburstChart {
             .on("mouseout", function(event, d) {
                 tooltip.transition().duration(500).style("opacity", 0);
             });
+        
+        this.path = path;
 
-        // --- LABELS ---
-        const label = svg.append("g")
+        const label = chartGroup.append("g")
             .attr("pointer-events", "none") 
             .attr("text-anchor", "middle")
             .style("user-select", "none")
@@ -207,7 +355,7 @@ class SunburstChart {
         path.filter(d => d.children)
             .on("click", clicked);
 
-        const parent = svg.append("circle")
+        const parent = chartGroup.append("circle")
             .datum(root)
             .attr("r", innerRadius)
             .attr("fill", "white")
@@ -217,7 +365,7 @@ class SunburstChart {
             .style("cursor", "pointer")
             .on("click", clicked);
 
-        const centerText = svg.append("text")
+        const centerText = chartGroup.append("text")
             .attr("text-anchor", "middle")
             .attr("dy", "0.35em")
             .style("font-weight", "bold")
@@ -226,19 +374,9 @@ class SunburstChart {
             .text("Media");
 
         function clicked(event, p, isProgrammatic = false) {
-            const titleElement = d3.select("#sunburst-title");
-            if (p && p.depth > 0) {
-                const pathArray = p.ancestors()
-                                   .map(d => formatName(d.data.name))
-                                   .reverse()
-                                   .slice(1);
-                titleElement.text(`Explorer: ${pathArray.join(' → ')}`);
-            } else {
-                titleElement.text("Hierarchical Explorer");
-            }
-            
-            // --- FIX STARTS HERE ---
-            // Only emit an event if it's a direct user click
+            renderBreadcrumbs(p);
+            drawLegend(p);
+
             if (!isProgrammatic && self.dispatcher) {
                 const currentPath = p.ancestors().map(d => d.data.name).reverse().slice(1);
                 self.dispatcher.emit('pathChange', {
@@ -247,7 +385,6 @@ class SunburstChart {
                     isGoBack: false
                 });
             }
-            // --- FIX ENDS HERE ---
 
             centerText.text(p && p.data && p.data.name ? formatName(p.data.name) : "Media");
             parent.datum(p.parent || root);
@@ -259,9 +396,8 @@ class SunburstChart {
                 y1: Math.max(0, d.y1 - p.depth)
             });
 
-            const t = svg.transition().duration(750);
+            const t = chartGroup.transition().duration(750);
             const isVisible = d => {
-                // A node is visible if it's within the visible depth range and has a valid angle range
                 const withinDepthRange = d.target.y1 <= 2 && d.target.y0 >= 1;
                 const hasValidAngle = d.target.x1 > d.target.x0;
                 return withinDepthRange && hasValidAngle;
@@ -282,7 +418,6 @@ class SunburstChart {
                 })
                 .attr("pointer-events", d => {
                     if (!isVisible(d)) return "none";
-                    // Enable pointer events for any visible node (with children) or leaf nodes
                     const isLeaf = !d.children || d.children.length === 0;
                     return (d.children || isLeaf) ? "auto" : "none";
                 })
@@ -302,6 +437,9 @@ class SunburstChart {
             const r = (innerRadius + outerRadius) / 2;
             return `rotate(${angle - 90}) translate(${r},0) rotate(${angle < 180 ? 0 : 180})`;
         }
+        
+        renderBreadcrumbs(root);
+        drawLegend(root);
 
         this.zoomToNode = clicked;
     }
