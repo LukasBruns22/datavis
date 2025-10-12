@@ -78,8 +78,12 @@ export class DonutChart {
 
     update(donutData) {
         this.currentPath = this.stateManager.getCurrentPath();
+        const centerText = this.currentPath.length > 0
+            ? this.currentPath[this.currentPath.length - 1]
+            : "Media";
+        this.centerLabel.text(capitalize(formatLabels(centerText)));
         this._renderBreadcrumbs();
-        this.drawLegend();
+        this._drawLegend();
         const total = d3.sum(donutData, d => d.count);
 
         const pie = d3.pie()
@@ -301,7 +305,6 @@ export class DonutChart {
         } else {
             this.currentPath = this.currentPath.slice(0, index + 1);
         }
-        //this.currentPath = this.currentPath.slice(0, index + 1);
         const centerText = this.currentPath[this.currentPath.length - 1] || "Media"
         this.centerLabel.text(capitalize(formatLabels(centerText)));
 
@@ -314,7 +317,7 @@ export class DonutChart {
         this._renderBreadcrumbs();
     }
 
-    drawLegend() {
+    _drawLegend() {
         // Remove previous legend
         if (!this.legendGroup) {
             this.legendGroup = this.svg.append("g")
@@ -389,6 +392,7 @@ export class DonutChart {
         }
 
         // continuous attributes (runtime, year, rating)
+        //TODO: put in middle of chart
         if (currentLevel >= 2 && currentAttribute) {
             const baseGenre = this.stateManager.getCurrentPath()[GENRE_LEVEL_INDEX];
             const baseColor = d3.color(this.stateManager.getGenreColorScale()(baseGenre));

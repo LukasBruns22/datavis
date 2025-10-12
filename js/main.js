@@ -21,21 +21,22 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
 
     const dispatcher = new Dispatcher();
     const stateManager = new StateManager();
-    const dataProcessor = new DataProcessor(data.titles, stateManager);
+    const dataProcessor = new DataProcessor(data, stateManager);
     stateManager.setDataProcessor(dataProcessor);
     const processor = stateManager.getDataProcessor();
 
     const correlationData = processor.getCorrelationData();
     const donutData = processor.getDonutData();
+    const actorAttributeNetworkData = processor.getActorAttributeNetworkData();
 
 
     // initialize charts
     donutChart = new DonutChart("#sunburst-container", donutData, stateManager, dispatcher);
     correlationPlot = new CorrelationPlot("#correlation-chart-svg", correlationData, stateManager, dispatcher);
-    // actorAttributeNetwork = new ActorAttributeNetwork("#network-graph-container", { persons: data.persons, titles: filteredTitles }, dispatcher, stateManager);
+    actorAttributeNetwork = new ActorAttributeNetwork("#network-graph-container", actorAttributeNetworkData, dispatcher, stateManager);
     const dropdown = new DropdownControl("#dropdown-container", dispatcher, stateManager);
 
-    // --- Central Event Listeners ---
+    // central event listeners
     dispatcher.on('pathChange', (pathInfo) => {
         const currentPath = pathInfo.path;
         stateManager.setPath(currentPath, HIERARCHY_LEVELS);
@@ -44,21 +45,23 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
         const processor = stateManager.getDataProcessor();
         const correlationData = processor.getCorrelationData();
         const donutData = processor.getDonutData()
+        const actorAttributeNetworkData = processor.getActorAttributeNetworkData();
 
         const attributeName = attributeToPlot.charAt(0).toUpperCase() + attributeToPlot.slice(1);
+        //TODO fix that title stops at runtime attribute
         d3.select("#correlation-title").text(`IMDb Rating vs ${attributeName}`);
         d3.select("#network-title").text(`Actor-${attributeName} Network`);
 
         correlationPlot.update(correlationData, attributeToPlot);
         donutChart.update(donutData);
-        //actorAttributeNetwork.update(attributeToPlot);
+        actorAttributeNetwork.update(actorAttributeNetworkData, attributeToPlot);
     });
 
     dispatcher.on('jumpToAttribute', (attribute) => {
         const attributeName = attribute.charAt(0).toUpperCase() + attribute.slice(1);
         d3.select("#correlation-title").text(`Correlation: IMDb Rating vs ${attributeName}`);
-        correlationPlot.update(flattenedData, attribute, []);
-        sunburst.update([]);
+        //correlationPlot.update(flattenedData, attribute, []);
+        //sunburst.update([]);
         //actorAttributeNetwork.update(attribute);
     });
 
