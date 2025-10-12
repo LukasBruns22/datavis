@@ -90,3 +90,10 @@ export const BINNING_FUNCTIONS = {
     year: getYearBin,
     rating: getRatingBin
 };
+
+export function groupByAttribute(data, attribute) {
+    if (attribute === "year") return d3.group(data, d => getYearBin(d.year));
+    if (attribute === "runtime") return d3.group(data, d => getRuntimeBin(d.runtime));
+    if (attribute === "rating") return d3.group(data, d => getRatingBin(d.rating));
+    return d3.group(data, d => d[attribute]);
+}

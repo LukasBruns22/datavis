@@ -80,20 +80,35 @@ export class StateManager {
      * @returns {object[]} The filtered data.
      */
     applyFilters(data) {
-    let filtered = [...data];
+        let filtered = [...data];
 
-    for (const key in this.filters) {
-        const filterLabel = this.filters[key];
-        if (!filterLabel) continue;
+        for (const key in this.filters) {
+            const filterLabel = this.filters[key];
+            if (!filterLabel) continue;
 
-        const bin = BINS[key]?.find(b => b.label === filterLabel);
-        if (bin) {
-            filtered = filtered.filter(d => d[key] >= bin.min && d[key] <= bin.max);
-        } else if (filterLabel !== "Other" && filterLabel !== "Media") {
-            filtered = filtered.filter(d => String(d[key]) === String(filterLabel));
+            const bin = BINS[key]?.find(b => b.label === filterLabel);
+
+            filtered = filtered.filter(d => {
+                const value = d[key] ?? d[`${key}s`]; // handle plural keys like "genres"
+
+                if (bin) {
+                    // bin-based filtering (numeric ranges)
+                    return value >= bin.min && value <= bin.max;
+                }
+
+                if (Array.isArray(value)) {
+                    // e.g. for genres: ["Drama", "Action", "Comedy"]
+                    return value.includes(filterLabel);
+                }
+
+                if (filterLabel !== "Other" && filterLabel !== "Media") {
+                    return String(value) === String(filterLabel);
+                }
+
+                return true;
+            });
         }
-    }
 
-    return filtered;
-}
+        return filtered;
+    }
 }

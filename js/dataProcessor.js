@@ -1,40 +1,17 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
-import { getYearBin, getRuntimeBin, getRatingBin } from "./helper.js";
-import { HIERARCHY_LEVELS, TOP_N_GENRES, BINS } from "./config.js";
+import { groupByAttribute } from "./helper.js";
+import { HIERARCHY_LEVELS, BINS, TOP_N_GENRES } from "./config.js";
 
 
 export class DataProcessor {
-    constructor(titles, stateManager) {
-        this.rawData = titles;
+    constructor(rawData, stateManager) {
+        this.rawTitles = rawData.titles;
+        this.rawPersons = rawData.persons
         this.stateManager = stateManager;
         this.computeTopGenresAndScales()
     }
 
-    // pre-flatten once (used by all charts)
-    getFlattenedData() {
-        if (!this.flattened) {
-            this.flattened = this.rawData
-                .filter(item =>
-                    (item.titleType === 'movie' || item.titleType === 'tvSeries') &&
-                    item.genres && item.genres.length > 0 &&
-                    item.runtimeMinutes &&
-                    item.averageRating &&
-                    item.startYear && item.startYear < 2025
-                )
-                .flatMap(item => item.genres.map(genre => ({
-                    type: item.titleType,
-                    genre,
-                    year: +item.startYear,
-                    runtime: +item.runtimeMinutes,
-                    rating: +item.averageRating,
-                    title: item.originalTitle
-                })));
-        }
-
-        return this.flattened;
-    }
-
-    computeTopGenresAndScales(TOP_N_GENRES = 10) {
+    computeTopGenresAndScales() {
         this.getFlattenedData();
 
         const genreCounts = d3.rollup(this.flattened, v => v.length, d => d.genre);
@@ -54,8 +31,9 @@ export class DataProcessor {
             .range(['#1f77b4', '#ff7f0e']);
 
         const ratingColorScale = d3.scaleLinear()
-            .domain([8, 10])
-            .range(["#89d7a7ff", "#145a32"]);
+            .domain([1, 4, 10])
+            .range(["#b22222", "#f4d03f", "#1e894cff"])
+            .interpolate(d3.interpolateLab);
 
         this.stateManager.setColorScales(genreColorScale, typeColorScale, ratingColorScale);
         this.stateManager.setTopGenres(topGenres);
@@ -65,24 +43,63 @@ export class DataProcessor {
         });
     }
 
-    // get data filtered by current path (["movie", "Drama", "2000-2004"])
-    getFilteredData() {
-        const path = this.stateManager.getCurrentPath();
-        const filters = {};
-        const levels = HIERARCHY_LEVELS.slice(0, path.length);
+    // small preprocessing to assure no invalid titles
+    getPreprocessedTitles() {
+        if (!this.preprocessedTitles) {
+            this.preprocessedTitles = this.rawTitles
+                .filter(item =>
+                    (item.titleType === 'movie' || item.titleType === 'tvSeries') &&
+                    item.genres && item.genres.length > 0 &&
+                    item.runtimeMinutes &&
+                    item.averageRating &&
+                    item.startYear && item.startYear < 2025
+                )
+                .map(item => ({
+                    tconst: item.tconst,
+                    title: item.originalTitle,
+                    type: item.titleType,
+                    genres: item.genres,
+                    year: +item.startYear,
+                    runtime: +item.runtimeMinutes,
+                    rating: +item.averageRating
+                }));
+        }
 
-        levels.forEach((level, i) => {
-            filters[level] = path[i];
-        });
-
-        return this.stateManager.applyFilters(this.getFlattenedData(), filters);
+        return this.preprocessedTitles;
     }
 
+    getFlattenedData() {
+        if (!this.flattened) {
+            this.flattened = this.getPreprocessedTitles()
+                .flatMap(item =>
+                    item.genres.map(genre => ({
+                        ...item,
+                        genre
+                    }))
+                );
+        }
+
+        return this.flattened;
+    }
+
+    // get data filtered by current path (["movie", "Drama", "2000-2004"])
+    getFilteredData() {
+        return this.stateManager.applyFilters(this.getFlattenedData());
+    }
+
+    getFilteredUnflattenedData() {
+        return this.stateManager.applyFilters(this.getPreprocessedTitles());
+    }
 
     getCorrelationData() {
         return this.getFilteredData();
     }
 
+    getActorAttributeNetworkData() {
+        return { persons: this.rawPersons, titles: this.getFilteredUnflattenedData() }
+    }
+
+    //TODO: remove duplicates in "Other" genre
     getDonutData(selectedAttribute = null) {
         const path = this.stateManager.getCurrentPath();
         const currentLevel = path.length;
@@ -92,7 +109,7 @@ export class DataProcessor {
 
         if (!isLastLevel) {
             const nextAttribute = selectedAttribute || HIERARCHY_LEVELS[currentLevel];
-            const grouped = this._groupByAttribute(data, nextAttribute);
+            const grouped = groupByAttribute(data, nextAttribute);
 
             const nonEmptyGrouped = Array.from(grouped)
                 .filter(([key, values]) => values && values.length > 0);
@@ -111,8 +128,8 @@ export class DataProcessor {
                 }
 
                 return {
-                    name: longLabel,        
-                    shortName: shortLabel, 
+                    name: longLabel,
+                    shortName: shortLabel,
                     count: values.length,
                     avgRating: d3.mean(values, d => d.rating),
                 };
@@ -125,18 +142,11 @@ export class DataProcessor {
 
             return topMovies.map(d => ({
                 name: d.title,
-                shortName: d.title, 
+                shortName: d.title,
                 count: 1,
                 avgRating: d.rating,
             }));
         }
-    }
-
-    _groupByAttribute(data, attribute) {
-        if (attribute === "year") return d3.group(data, d => getYearBin(d.year));
-        if (attribute === "runtime") return d3.group(data, d => getRuntimeBin(d.runtime));
-        if (attribute === "rating") return d3.group(data, d => getRatingBin(d.rating));
-        return d3.group(data, d => d[attribute]);
     }
 
 }
