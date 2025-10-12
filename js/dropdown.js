@@ -1,4 +1,5 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+import { HIERARCHY_LEVELS } from "./config.js";
 
 export class DropdownControl {
     /**
@@ -6,9 +7,8 @@ export class DropdownControl {
      * @param {string[]} attributes - The array of attribute names for the options.
      * @param {Dispatcher} dispatcher - The application's dispatcher instance.
      */
-    constructor(selector, attributes, dispatcher) {
+    constructor(selector, dispatcher) {
         this.container = d3.select(selector);
-        this.attributes = attributes;
         this.dispatcher = dispatcher;
     }
 
@@ -27,7 +27,7 @@ export class DropdownControl {
             .attr("id", "attribute-dropdown");
 
         dropdown.selectAll("option")
-            .data(this.attributes)
+            .data(HIERARCHY_LEVELS)
             .enter()
             .append("option")
             .attr("value", d => d)

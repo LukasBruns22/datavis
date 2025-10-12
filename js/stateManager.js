@@ -1,3 +1,5 @@
+import { BINS } from "./config.js";
+
 export class StateManager {
     constructor() {
         this.filters = {}; // e.g., { type: 'movie', genre: 'Action' }
@@ -27,6 +29,14 @@ export class StateManager {
         return this.topGenres;
     }
 
+    setCurrentTitles(currentTitles) {
+        this.currentTitles = currentTitles
+    }
+
+    getCurrentTitles() {
+        return this.currentTitles
+    }
+
     /**
      * Sets the current filter state from a hierarchical path.
      * @param {string[]} path - An array representing the filter path (e.g., ['movie', 'Action']).
@@ -41,6 +51,14 @@ export class StateManager {
                 this.filters[attribute] = filterValue;
             }
         });
+    }
+
+    setDataProcessor(processor) {
+        this.dataProcessor = processor;
+    }
+
+    getDataProcessor() {
+        return this.dataProcessor;
     }
 
 
@@ -62,16 +80,20 @@ export class StateManager {
      * @returns {object[]} The filtered data.
      */
     applyFilters(data) {
-        let filtered = [...data];
-        for (const key in this.filters) {
-            const filterValue = this.filters[key];
-            if (typeof filterValue === 'string' && filterValue.includes(' - ')) {
-                const [min, max] = filterValue.split(' - ').map(parseFloat);
-                filtered = filtered.filter(d => d[key] >= min && d[key] <= max);
-            } else if (filterValue !== "Other" && filterValue !== "Media") {
-                filtered = filtered.filter(d => String(d[key]) === String(filterValue));
-            }
+    let filtered = [...data];
+
+    for (const key in this.filters) {
+        const filterLabel = this.filters[key];
+        if (!filterLabel) continue;
+
+        const bin = BINS[key]?.find(b => b.label === filterLabel);
+        if (bin) {
+            filtered = filtered.filter(d => d[key] >= bin.min && d[key] <= bin.max);
+        } else if (filterLabel !== "Other" && filterLabel !== "Media") {
+            filtered = filtered.filter(d => String(d[key]) === String(filterLabel));
         }
-        return filtered;
     }
+
+    return filtered;
+}
 }

@@ -1,64 +1,67 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+import { HIERARCHY_LEVELS, BINS, GENRE_LEVEL_INDEX } from "./config.js";
 
-export const HIERARCHY_LEVELS = ["type", "genre", "year", "runtime", "rating"];
-const GENRE_LEVEL_INDEX = HIERARCHY_LEVELS.indexOf("genre");
+export function capitalize(val) {
+    return String(val).charAt(0).toUpperCase() + String(val).slice(1);
+}
 
-const BINS = {
-    runtime: [
-        "Short (< 45 min)",
-        "Standard (45-119 min)",
-        "Long (120-179 min)",
-        "Epic (> 180 min)"
-    ],
-    year: [
-        "2000 - 2004",
-        "2005 - 2009",
-        "2010 - 2014",
-        "2015 - 2019",
-        "2020 - 2024"
-    ],
-    rating: [
-        "Below Average (<6.0)",
-        "Average (6.0-6.9)",
-        "Good (7.0-7.9)",
-        "Great (8.0-8.9)",
-        "Excellent (9.0-10.0)"
-    ]
-};
+export function formatLabels(name) {
+    if (typeof name !== 'string') return name;
+    if (name === 'movie') return 'Movies';
+    if (name === 'tvSeries') return 'TV Shows';
+    return name;
+}
 
 export function getColor(attributeValue, stateManager) {
-    const currentPath = stateManager.getCurrentPath(); // e.g., ["movies", "drama", "120-179min"]
-    const currentAttribute = HIERARCHY_LEVELS[currentPath.length]
+    const currentPath = stateManager.getCurrentPath();
+    const currentLevel = currentPath.length;
+    const currentAttribute = HIERARCHY_LEVELS[currentLevel];
 
-    // current attribute is "type"
-    if (currentPath.length === 0) {
+    // --- LEVEL 0: Media Type ---
+    if (currentLevel === 0) {
         return stateManager.getTypeColorScale()(attributeValue);
     }
 
-    // current attribute is "genre"
-    if (currentPath.length === 1) {
+    // --- LEVEL 1: Genre ---
+    if (currentLevel === 1) {
         return stateManager.getGenreColorScale()(attributeValue);
     }
 
-    // Length > 1 → continuous attributes (runtime, year and rating)
-    // Use genre (last categorical) as base color
-    const baseColor = stateManager.getGenreColorScale()(currentPath[GENRE_LEVEL_INDEX]);
-    const attributeBins = BINS[currentAttribute]
+    // --- LEVEL ≥ 2: Continuous attributes or movies ---
+    const baseGenre = currentPath[GENRE_LEVEL_INDEX] || currentPath[1]; // fallback
+    const baseColor = d3.color(stateManager.getGenreColorScale()(baseGenre));
+
+    // --- Continuous attributes (runtime, year, rating) ---
+    if (BINS[currentAttribute]) {
+        const attributeBins = BINS[currentAttribute];
+
+        // Find index of the bin object by matching label
+        const binIndex = attributeBins.findIndex(b => b.label === attributeValue);
+        if (binIndex >= 0) {
+            const brightnessScale = d3.scaleLinear()
+                .domain([0, attributeBins.length - 1])
+                .range([-1, 1]);
+
+            const modificationAmount = brightnessScale(binIndex);
+            return modificationAmount < 0
+                ? baseColor.darker(Math.abs(modificationAmount))
+                : baseColor.brighter(modificationAmount);
+        }
+    }
+
+    // --- Last Level: Movies (no bins) ---
+    const movies = stateManager.getCurrentTitles?.() || [];
+    const index = movies.findIndex(m => m.title === attributeValue);
+    const total = Math.max(movies.length, 1);
 
     const brightnessScale = d3.scaleLinear()
-        .domain([0, attributeBins.length - 1])
-        .range([-1, 1]); 
+        .domain([0, total - 1])
+        .range([-0.8, 0.8]); // tweak brightness range if needed
 
-    const modificationAmount = brightnessScale(attributeBins.indexOf(attributeValue));
-    const parsedColor = d3.color(baseColor);
-
-    if (modificationAmount < 0) {
-        // d.darker() takes a value > 0, so we use Math.abs()
-        return parsedColor.darker(Math.abs(modificationAmount));
-    } else {
-        return parsedColor.brighter(modificationAmount);
-
-    }
+    const modificationAmount = brightnessScale(index);
+    return modificationAmount < 0
+        ? baseColor.darker(Math.abs(modificationAmount))
+        : baseColor.brighter(modificationAmount);
 }
 
 export function getRuntimeBin(runtime) {
