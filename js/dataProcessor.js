@@ -8,18 +8,13 @@ export class DataProcessor {
         this.rawTitles = rawData.titles;
         this.rawPersons = rawData.persons
         this.stateManager = stateManager;
-        this.computeTopGenresAndScales()
+        this.computeTopGenres()
+        this.computeColorScales()
     }
 
-    computeTopGenresAndScales() {
-        this.getFlattenedData();
+    computeColorScales() {
 
-        const genreCounts = d3.rollup(this.flattened, v => v.length, d => d.genre);
-        const sortedGenres = Array.from(genreCounts.entries())
-            .sort((a, b) => b[1] - a[1])
-            .map(d => d[0]);
-
-        const topGenres = sortedGenres.slice(0, TOP_N_GENRES);
+        const topGenres = this.stateManager.getTopGenres()
 
         const genreColorScale = d3.scaleOrdinal()
             .domain(topGenres)
@@ -36,16 +31,28 @@ export class DataProcessor {
             .interpolate(d3.interpolateLab);
 
         this.stateManager.setColorScales(genreColorScale, typeColorScale, ratingColorScale);
-        this.stateManager.setTopGenres(topGenres);
 
-        this.flattened.forEach(d => {
-            d.genre = topGenres.includes(d.genre) ? d.genre : "Other";
-        });
+    }
+
+    computeTopGenres() {
+        const genreCounts = d3.rollup(
+            this.rawTitles.flatMap(d => d.genres.map(g => ({ genre: g }))),
+            v => v.length,
+            d => d.genre
+        );
+        const sortedGenres = Array.from(genreCounts.entries())
+            .sort((a, b) => b[1] - a[1])
+            .map(d => d[0]);
+
+        const topGenres = sortedGenres.slice(0, TOP_N_GENRES);
+        this.stateManager.setTopGenres(topGenres)
     }
 
     // small preprocessing to assure no invalid titles
     getPreprocessedTitles() {
         if (!this.preprocessedTitles) {
+            const topGenres = this.stateManager.getTopGenres()
+
             this.preprocessedTitles = this.rawTitles
                 .filter(item =>
                     (item.titleType === 'movie' || item.titleType === 'tvSeries') &&
@@ -54,15 +61,21 @@ export class DataProcessor {
                     item.averageRating &&
                     item.startYear && item.startYear < 2025
                 )
-                .map(item => ({
-                    tconst: item.tconst,
-                    title: item.originalTitle,
-                    type: item.titleType,
-                    genres: item.genres,
-                    year: +item.startYear,
-                    runtime: +item.runtimeMinutes,
-                    rating: +item.averageRating
-                }));
+                .map(item => {
+                    const mappedGenres = item.genres
+                        .map(g => topGenres.includes(g) ? g : "Other");
+                    const uniqueGenres = [...new Set(mappedGenres)];
+
+                    return {
+                        tconst: item.tconst,
+                        title: item.originalTitle,
+                        type: item.titleType,
+                        genres: uniqueGenres,
+                        year: +item.startYear,
+                        runtime: +item.runtimeMinutes,
+                        rating: +item.averageRating
+                    };
+                });
         }
 
         return this.preprocessedTitles;
@@ -73,8 +86,13 @@ export class DataProcessor {
             this.flattened = this.getPreprocessedTitles()
                 .flatMap(item =>
                     item.genres.map(genre => ({
-                        ...item,
-                        genre
+                        tconst: item.tconst,
+                        title: item.title,
+                        type: item.type,
+                        genre,
+                        year: item.year,
+                        runtime: item.runtime,
+                        rating: item.rating
                     }))
                 );
         }
@@ -99,7 +117,6 @@ export class DataProcessor {
         return { persons: this.rawPersons, titles: this.getFilteredUnflattenedData() }
     }
 
-    //TODO: remove duplicates in "Other" genre
     getDonutData(selectedAttribute = null) {
         const path = this.stateManager.getCurrentPath();
         const currentLevel = path.length;
@@ -112,7 +129,7 @@ export class DataProcessor {
             const grouped = groupByAttribute(data, nextAttribute);
 
             const nonEmptyGrouped = Array.from(grouped)
-                .filter(([key, values]) => values && values.length > 0);
+                .filter(([_, values]) => values && values.length > 0);
 
             return nonEmptyGrouped.map(([key, values]) => {
                 let longLabel = key;
