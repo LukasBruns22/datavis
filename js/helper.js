@@ -65,7 +65,7 @@ export function getColor(attributeValue, stateManager) {
 }
 
 export function getRuntimeBin(runtime) {
-    if (runtime >= 180) return "Epic (> 180 min)";
+    if (runtime >= 180) return "Epic (>= 180 min)";
     if (runtime >= 120) return "Long (120-179 min)";
     if (runtime >= 45) return "Standard (45-119 min)";
     return "Short (< 45 min)";

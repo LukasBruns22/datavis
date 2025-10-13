@@ -101,7 +101,7 @@ export class StateManager {
                     return value.includes(filterLabel);
                 }
 
-                if (filterLabel !== "Other" && filterLabel !== "Media") {
+                if (filterLabel !== "Media") {
                     return String(value) === String(filterLabel);
                 }
 
