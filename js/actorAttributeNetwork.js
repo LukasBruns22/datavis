@@ -2,12 +2,6 @@ import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 import { getColor, BINNING_FUNCTIONS, formatLabels, capitalize } from "./helper.js";
 import { HIERARCHY_LEVELS } from "./config.js";
 
-/* 
-TODO:
-1. fix empty nodes not showing up
-5. add legend for node size
-7. handle "Other category"
- */
 
 export class ActorAttributeNetwork {
     constructor(containerSelector, data, dispatcher, stateManager) {
@@ -105,78 +99,61 @@ export class ActorAttributeNetwork {
     }
 
     _buildNetwork(persons, titles, attribute) {
+        const topGenres = this.stateManager.getTopGenres();
+        const titleById = new Map(titles.map(t => [t.tconst, t]));
         const actorMap = new Map();
         const attributeMap = new Map();
         const links = [];
-        const topGenres = this.stateManager.getTopGenres()
 
-        persons.forEach(person => {
-            const relatedTitles = person.jobs
-                .map(t => titles.find(x => x.tconst === t))
-                .filter(Boolean);
+        const binCache = new Map();
+        const getBinned = (attr, val) => {
+            const key = `${attr}:${val}`;
+            if (!binCache.has(key)) {
+                binCache.set(key, BINNING_FUNCTIONS[attr]?.(val) ?? val);
+            }
+            return binCache.get(key);
+        };
 
-            if (relatedTitles.length === 0) return;
+        for (const person of persons) {
+            const relatedTitles = person.jobs.map(id => titleById.get(id)).filter(Boolean);
+            if (relatedTitles.length === 0) continue;
 
-            // Collect which attributes this actor connects to
-            const actorAttributes = new Set();
-            relatedTitles.forEach(t => {
+            const attributeCounts = new Map();
+            const ratings = [];
+
+            for (const t of relatedTitles) {
+                ratings.push(t.rating);
                 if (attribute === "genre" && Array.isArray(t.genres)) {
-                    t.genres.forEach(g => {
-                        const genreName = topGenres.includes(g) ? g : "Other";
-                        actorAttributes.add(genreName);
-                    });
+                    for (const g of t.genres) {
+                        const genre = topGenres.includes(g) ? g : "Other";
+                        attributeCounts.set(genre, (attributeCounts.get(genre) || 0) + 1);
+                    }
+                } else {
+                    const val = BINNING_FUNCTIONS[attribute] ? getBinned(attribute, t[attribute]) : t[attribute];
+                    attributeCounts.set(val, (attributeCounts.get(val) || 0) + 1);
+                }
+            }
 
-                }
-                else if (BINNING_FUNCTIONS[attribute]) {
-                    actorAttributes.add(BINNING_FUNCTIONS[attribute](t[attribute]));
-                }
-                else {
-                    actorAttributes.add(t[attribute]);
-                }
-            });
-
-            const avgRating = d3.mean(relatedTitles, d => d.rating);
+            const avgRating = d3.mean(ratings);
             const actorNode = {
                 id: person.primaryName,
                 nodeType: "actor",
                 avgRating,
                 value: relatedTitles.length,
-                attributes: Array.from(actorAttributes)
+                attributes: Array.from(attributeCounts.keys())
             };
             actorMap.set(actorNode.id, actorNode);
 
-            // Add edges
-            const attributeCounts = new Map();
-            relatedTitles.forEach(t => {
-                if (attribute === "genre" && Array.isArray(t.genres)) {
-                    t.genres.forEach(g => {
-                        const genreName = topGenres.includes(g) ? g : "Other";
-                        attributeCounts.set(genreName, (attributeCounts.get(genreName) || 0) + 1);
-                    });
-                } else if (BINNING_FUNCTIONS[attribute]) {
-                    const bin = BINNING_FUNCTIONS[attribute](t[attribute]);
-                    attributeCounts.set(bin, (attributeCounts.get(bin) || 0) + 1);
-                } else {
-                    const val = t[attribute];
-                    attributeCounts.set(val, (attributeCounts.get(val) || 0) + 1);
-                }
-            });
-
-            // Add edges with movie counts
-            attributeCounts.forEach((count, attr) => {
+            for (const [attr, count] of attributeCounts) {
                 if (!attributeMap.has(attr)) {
-                    attributeMap.set(attr, {
-                        id: attr,
-                        nodeType: "attribute",
-                        attributeType: attribute,
-                        value: 1
-                    });
+                    attributeMap.set(attr, { id: attr, nodeType: "attribute", attributeType: attribute, value: 1 });
                 } else {
                     attributeMap.get(attr).value += 1;
                 }
-                links.push({ source: actorNode.id, target: attr, strength: 1, count }); // <–– store movie count
-            });
-        });
+                links.push({ source: actorNode.id, target: attr, strength: 1, count });
+            }
+        }
+
 
         const topN = attribute == "genre" ? 3 : 4;
         const selectedActors = new Set();
