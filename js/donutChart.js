@@ -119,7 +119,6 @@ export class DonutChart {
             .attr("d", this.arc)
             .attr("fill-opacity", 0.9);
 
-        // --- LABELS ---
         const labels = this.container.selectAll("text.label")
             .data(arcs, d => d.data.name);
 
@@ -143,7 +142,7 @@ export class DonutChart {
         }
 
         const labelSelection = labelsEnter.merge(labels)
-            .transition().duration(600)
+            .transition().duration(1000)
             .attr("transform", labelTransform)
             .attr("fill-opacity", d => (d.endAngle - d.startAngle > 0.15 ? 1 : 0))
             .selection();
@@ -435,8 +434,10 @@ export class DonutChart {
             });
             const rectWidth = 300;
             const rectHeight = 20;
+            const legendTranslation = 75;
 
             this.legendGroup.append("rect")
+                .attr("transform", `translate(${legendTranslation}, ${0})`)
                 .attr("width", rectWidth)
                 .attr("height", rectHeight)
                 .style("fill", `url(#${gradientId})`)
@@ -450,12 +451,14 @@ export class DonutChart {
             else if (currentAttribute === "rating") { startLabel = "Lower Rating"; endLabel = "Higher Rating"; }
 
             this.legendGroup.append("text")
+                .attr("transform", `translate(${legendTranslation}, ${0})`)
                 .text(startLabel)
                 .attr("y", rectHeight + 25)
                 .style("font-size", "10px")
                 .style("fill", "#333");
 
             this.legendGroup.append("text")
+                .attr("transform", `translate(${legendTranslation}, ${0})`)
                 .text(endLabel)
                 .attr("x", rectWidth)
                 .attr("y", rectHeight + 25)

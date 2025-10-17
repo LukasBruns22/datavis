@@ -4,13 +4,14 @@ import { DropdownControl } from "./dropdown.js";
 import { DonutChart } from "./donutChart.js";
 import { CorrelationPlot } from "./correlationPlot.js";
 import { ActorAttributeNetwork } from "./actorAttributeNetwork.js";
+import { RatingHeatmap } from "./ratingHeatmap.js";
 import { StateManager } from "./stateManager.js";
 import { DataProcessor } from "./dataProcessor.js";
 import { HIERARCHY_LEVELS } from "./config.js";
 
 
 // global variables for charts
-let correlationPlot, actorAttributeNetwork, donutChart;
+let correlationPlot, actorAttributeNetwork, donutChart, ratingHeatmap;
 
 window.scaledFont = function(px) {
   const scale = window.devicePixelRatio || 1;
@@ -28,12 +29,13 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
     const correlationData = processor.getCorrelationData();
     const donutData = processor.getDonutData();
     const actorAttributeNetworkData = processor.getActorAttributeNetworkData();
-
+    const heatmapData = processor.getHeatmapData();
 
     // initialize charts
     donutChart = new DonutChart("#sunburst-container", donutData, stateManager, dispatcher);
     correlationPlot = new CorrelationPlot("#correlation-chart-svg", correlationData, stateManager, dispatcher);
     actorAttributeNetwork = new ActorAttributeNetwork("#network-graph-container", actorAttributeNetworkData, dispatcher, stateManager);
+    ratingHeatmap = new RatingHeatmap("#heatmap-container", heatmapData, stateManager, dispatcher)
     const dropdown = new DropdownControl("#dropdown-container", dispatcher, stateManager);
 
     // central event listeners
@@ -46,13 +48,16 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
         const correlationData = processor.getCorrelationData();
         const donutData = processor.getDonutData()
         const actorAttributeNetworkData = processor.getActorAttributeNetworkData();
+        const heatmapData = processor.getHeatmapData();
 
         const attributeName = attributeToPlot.charAt(0).toUpperCase() + attributeToPlot.slice(1);
         //TODO fix that title stops at runtime attribute
         d3.select("#correlation-title").text(`IMDb Rating vs ${attributeName}`);
         d3.select("#network-title").text(`Actor-${attributeName} Network`);
+        d3.select("#heatmap-title").text(`Average Rating per ${attributeName}`)
 
         correlationPlot.update(correlationData, attributeToPlot);
+        ratingHeatmap.update(heatmapData)
         donutChart.update(donutData);
         actorAttributeNetwork.update(actorAttributeNetworkData, attributeToPlot);
     });
@@ -67,7 +72,6 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
 
     // initial draw
     correlationPlot.update(correlationData, 'type');
-    //actorAttributeNetwork.update('type');
     dropdown.render();
 
 }).catch(function (error) {

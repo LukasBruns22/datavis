@@ -160,7 +160,6 @@ export class CorrelationPlot {
                     .attr("y", this.uniformButtonHeight / 2)
                     .style("dominant-baseline", "middle");
 
-                // The click handler now correctly emits a 'pathChange' event
                 group.on("click", () => {
                     let newPath;
                     // If the last breadcrumb (the current level) is clicked, go up one level.

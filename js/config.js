@@ -24,3 +24,19 @@ export const BINS = {
         { label: "2020 - 2024", shortLabel: "2020-24", min: 2020, max: 2024 }
     ]
 };
+
+export const GENRE_SHORT = {
+    "Adventure": "ADV",
+    "Animation": "ANI",
+    "Comedy": "COM",
+    "Drama": "DRA",
+    "Action": "ACT",
+    "Thriller": "THR",
+    "Documentary": "DOC",
+    "Romance": "ROM",
+    "Crime": "CRI",
+    "Horror": "HOR",
+    "Mystery": "MYS",
+    "Fantasy": "FSY",
+    "Other": "MISC"
+};

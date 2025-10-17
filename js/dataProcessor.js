@@ -1,6 +1,6 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 import { groupByAttribute } from "./helper.js";
-import { HIERARCHY_LEVELS, BINS, TOP_N_GENRES } from "./config.js";
+import { HIERARCHY_LEVELS, BINS, TOP_N_GENRES, GENRE_SHORT } from "./config.js";
 
 
 export class DataProcessor {
@@ -166,4 +166,66 @@ export class DataProcessor {
         }
     }
 
-}
+    getHeatmapData() {
+        const path = this.stateManager.getCurrentPath();
+        const currentLevel = path.length;
+        const nextAttribute = HIERARCHY_LEVELS[currentLevel];
+
+        if (!nextAttribute) return null; // reached last level
+
+        const data = this.getFilteredData();
+        const bins = BINS[nextAttribute];
+
+        const grouped = d3.group(data, d => {
+            if (bins) {
+                const bin = bins.find(b => d[nextAttribute] >= b.min && d[nextAttribute] <= b.max);
+                return bin ? bin.label : "Unknown";
+            }
+            return d[nextAttribute];
+        });
+
+        const columns = Array.from(grouped, ([key, values]) => {
+            const avgRating = d3.mean(values, d => d.rating);
+            const topTitles = values
+                .sort((a, b) => d3.descending(a.rating, b.rating))
+                .slice(0, 5)
+                .map(d => ({
+                    title: d.title,
+                    rating: d.rating
+                }));
+
+            // find short label if this attribute has bins
+            let shortLabel = key;
+            if (bins) {
+                const matchedBin = bins.find(b => b.label === key);
+                if (matchedBin && matchedBin.shortLabel) {
+                    shortLabel = matchedBin.shortLabel;
+                }
+            } else if (nextAttribute == "genre") {
+                shortLabel = GENRE_SHORT[key]
+            }
+
+
+            return {
+                key,          // full label 
+                shortLabel,   // short label 
+                avgRating,
+                titles: topTitles
+            };
+        });
+
+        if (nextAttribute === "genre") {
+            const genreOrder = new Map(this.stateManager.getTopGenres().map((g, i) => [g, i]));
+            columns.sort((a, b) => {
+                const ai = genreOrder.has(a.key) ? genreOrder.get(a.key) : Infinity;
+                const bi = genreOrder.has(b.key) ? genreOrder.get(b.key) : Infinity;
+                return ai - bi || d3.ascending(a.key, b.key);
+            });
+        }
+
+            return {
+                attribute: nextAttribute,
+                columns
+            };
+        }
+    }
