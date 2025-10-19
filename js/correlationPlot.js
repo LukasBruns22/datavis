@@ -220,11 +220,13 @@ export class CorrelationPlot {
             // Don't clear or redraw - this freezes the view
             return;
         }
+        d3.select("#correlation-title").text(`Rating vs ${capitalize(formatLabels(attribute))}`);
+        
 
         // The rest of the function will now only run for the levels we want to plot.
         this.chartGroup.selectAll(".plot-element").remove();
         this.chartGroup.selectAll(".trend-line").remove();
-        this.yAxisLabel.text("IMDB Rating");
+        this.yAxisLabel.text("Rating");
 
         this.currentData = data;
         this.currentXAttribute = attribute || 'genre';

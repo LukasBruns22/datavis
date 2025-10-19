@@ -67,7 +67,7 @@ export class DonutChart {
             .style("font-weight", "bold")
             .style("font-size", "14px")
             .style("pointer-events", "none")
-            .text("Media");
+            .text("Type");
     }
 
     _setupBreadcrumbs() {
@@ -80,7 +80,7 @@ export class DonutChart {
         this.currentPath = this.stateManager.getCurrentPath();
         const centerText = this.currentPath.length > 0
             ? this.currentPath[this.currentPath.length - 1]
-            : "Media";
+            : "Type";
         this.centerLabel.text(capitalize(formatLabels(centerText)));
         this._renderBreadcrumbs();
         this._drawLegend();
@@ -501,7 +501,7 @@ export class DonutChart {
         this.currentPath.pop();
         const centerText = this.currentPath.length > 0
             ? this.currentPath[this.currentPath.length - 1]
-            : "Media";
+            : "Type";
         this.centerLabel.text(capitalize(formatLabels(centerText)));
         this._renderBreadcrumbs();
 

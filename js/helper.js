@@ -17,21 +17,21 @@ export function getColor(attributeValue, stateManager) {
     const currentLevel = currentPath.length;
     const currentAttribute = HIERARCHY_LEVELS[currentLevel];
 
-    // --- LEVEL 0: Media Type ---
+    // type
     if (currentLevel === 0) {
         return stateManager.getTypeColorScale()(attributeValue);
     }
 
-    // --- LEVEL 1: Genre ---
+    // genre
     if (currentLevel === 1) {
         return stateManager.getGenreColorScale()(attributeValue);
     }
 
-    // --- LEVEL ≥ 2: Continuous attributes or movies ---
+    // continuous attributes or movies
     const baseGenre = currentPath[GENRE_LEVEL_INDEX] || currentPath[1]; // fallback
     const baseColor = d3.color(stateManager.getGenreColorScale()(baseGenre));
 
-    // --- Continuous attributes (runtime, year, rating) ---
+    // continuous attributes (runtime, year, rating)
     if (BINS[currentAttribute]) {
         const attributeBins = BINS[currentAttribute];
 

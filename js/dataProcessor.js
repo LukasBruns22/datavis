@@ -25,10 +25,17 @@ export class DataProcessor {
             .domain(['tvSeries', 'movie'])
             .range(['#1f77b4', '#ff7f0e']);
 
-        const ratingColorScale = d3.scaleLinear()
-            .domain([1, 4, 10])
-            .range(["#b22222", "#f4d03f", "#1e894cff"])
-            .interpolate(d3.interpolateLab);
+
+        const ratingColorScale = d3.scaleThreshold()
+            .domain([2, 4, 6, 7.5, 9, 10])  // cutoff points
+            .range([
+                "#5D3872", // <2
+                "#E64D3D", // 2–4
+                "#F59C10", // 4–6
+                "#F3CE3C", // 6–7.5
+                "#29B263", // 7.5–9
+                "#19683A"  // ≥9
+            ]);
 
         this.stateManager.setColorScales(genreColorScale, typeColorScale, ratingColorScale);
 
@@ -46,6 +53,20 @@ export class DataProcessor {
 
         const topGenres = sortedGenres.slice(0, TOP_N_GENRES);
         this.stateManager.setTopGenres(topGenres)
+    }
+
+    getEpisodeData() {
+        if (!this.episodeData) {
+            this.episodeData = this.rawTitles
+                .filter(item =>
+                    (item.titleType === 'tvEpisode') &&
+                    item.genres && item.genres.length > 0 &&
+                    item.runtimeMinutes &&
+                    item.averageRating &&
+                    item.startYear && item.startYear < 2025
+                )
+        }
+        return this.episodeData;
     }
 
     // small preprocessing to assure no invalid titles
@@ -70,6 +91,8 @@ export class DataProcessor {
                         tconst: item.tconst,
                         title: item.originalTitle,
                         type: item.titleType,
+                        tconst: item.tconst,
+                        seasonCount: item.seasonCount,
                         genres: uniqueGenres,
                         year: +item.startYear,
                         runtime: +item.runtimeMinutes,
@@ -92,7 +115,9 @@ export class DataProcessor {
                         genre,
                         year: item.year,
                         runtime: item.runtime,
-                        rating: item.rating
+                        rating: item.rating,
+                        tconst: item.tconst,
+                        seasonCount: item.seasonCount
                     }))
                 );
         }
@@ -152,12 +177,12 @@ export class DataProcessor {
                 };
             });
         } else {
-            const topMovies = data
+            const topTitles = data
                 .sort((a, b) => d3.descending(a.rating, b.rating))
                 .slice(0, 10);
-            this.stateManager.setCurrentTitles(topMovies);
+            this.stateManager.setCurrentTitles(topTitles);
 
-            return topMovies.map(d => ({
+            return topTitles.map(d => ({
                 name: d.title,
                 shortName: d.title,
                 count: 1,
@@ -171,9 +196,15 @@ export class DataProcessor {
         const currentLevel = path.length;
         const nextAttribute = HIERARCHY_LEVELS[currentLevel];
 
-        if (!nextAttribute) return null; // reached last level
+        const maxHeatmapLevel = HIERARCHY_LEVELS.indexOf("runtime");
+        if (currentLevel > maxHeatmapLevel) return null;
 
-        const data = this.getFilteredData();
+        if (!nextAttribute) return null; 
+
+        const useFlattened = ["genre", "runtime", "year"].includes(nextAttribute);
+        const data = useFlattened
+            ? this.getFilteredData()
+            : this.getFilteredUnflattenedData();
         const bins = BINS[nextAttribute];
 
         const grouped = d3.group(data, d => {
@@ -191,7 +222,10 @@ export class DataProcessor {
                 .slice(0, 5)
                 .map(d => ({
                     title: d.title,
-                    rating: d.rating
+                    rating: d.rating,
+                    type: d.type,
+                    tconst: d.tconst,
+                    seasonCount: d.seasonCount
                 }));
 
             // find short label if this attribute has bins
@@ -223,9 +257,9 @@ export class DataProcessor {
             });
         }
 
-            return {
-                attribute: nextAttribute,
-                columns
-            };
-        }
+        return {
+            attribute: nextAttribute,
+            columns
+        };
     }
+}

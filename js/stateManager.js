@@ -61,6 +61,9 @@ export class StateManager {
         return this.dataProcessor;
     }
 
+    getEpisodeData() {
+        return this.dataProcessor.getEpisodeData()
+    }
 
 
     setColorScales(genreColorScale, typeColorScale, ratingColorScale) {
@@ -101,7 +104,7 @@ export class StateManager {
                     return value.includes(filterLabel);
                 }
 
-                if (filterLabel !== "Media") {
+                if (filterLabel !== "Type") {
                     return String(value) === String(filterLabel);
                 }
 
