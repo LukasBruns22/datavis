@@ -11,7 +11,7 @@ export class ActorAttributeNetwork {
         this.stateManager = stateManager
         this.data = data;
         this.dispatcher = dispatcher;
-        this.margin = { top: 10, right: 0, bottom: 10, left: 0 };
+        this.margin = { top: 10, right: 0, bottom: 20, left: 0 };
         this.currentAttribute = "type";
         this.currentPath = stateManager.getCurrentPath()
         this.alpha = 0.5;
@@ -360,12 +360,10 @@ export class ActorAttributeNetwork {
                 }
             });
 
-        const legendHeight = 100
-
         const ticked = () => {
             node.each(d => {
                 d.x = Math.max(40, Math.min(width, d.x));
-                d.y = Math.max(40, Math.min(height - legendHeight, d.y));
+                d.y = Math.max(40, Math.min(height, d.y));
             });
 
             link
@@ -399,93 +397,9 @@ export class ActorAttributeNetwork {
             .force("y", d3.forceY(height / 2).strength(0.1))
             .on("tick", ticked);
 
-        this._renderRatingLegend();
 
     }
 
-    _renderRatingLegend() {
-        const ratingScale = this.stateManager.getRatingColorScale();
-        const [minRating, maxRating] = [6, 10];
-
-        const n = 8;
-        const bins = d3.range(minRating, maxRating + 0.001, (maxRating - minRating) / n);
-
-        const colorStops = bins.slice(0, -1).map(r => ratingScale(r));
-        this.chartGroup.selectAll(".rating-legend-group").remove();
-
-        const legendGroup = this.chartGroup.append("g")
-            .attr("class", "rating-legend-group");
-
-        const rectWidth = 300;
-        const rectHeight = 20;
-
-        const totalWidth = n * (rectWidth / n);
-        const startX = (this.width - totalWidth) / 2;
-        const y = this.height - 40; // bottom position
-
-        // Draw discrete rectangles
-        colorStops.forEach((color, i) => {
-            legendGroup.append("rect")
-                .attr("x", startX + i * (rectWidth / n))
-                .attr("y", y)
-                .attr("width", rectWidth / n)
-                .attr("height", rectHeight)
-                .attr("fill", color)
-                .attr("stroke", "#ccc");
-        });
-
-        // Add text labels under rectangles
-        bins.slice(0, -1).forEach((b, i) => {
-            legendGroup.append("text")
-                .attr("x", startX + i * (rectWidth / n) + (rectWidth / n) / 2)
-                .attr("y", y + rectHeight + 14)
-                .attr("text-anchor", "middle")
-                .style("font-size", "11px")
-                .style("fill", "#333")
-                .text(`${b.toFixed(1)}`);
-        });
-
-        // Add title
-        legendGroup.append("text")
-            .attr("x", this.width / 2)
-            .attr("y", y - 8)
-            .attr("text-anchor", "middle")
-            .style("font-size", "13px")
-            .style("font-weight", "600")
-            .style("fill", "#222")
-            .text("Average Rating");
-    }
-
-    _renderActorSizeLegend() {
-        const legendGroup = this.chartGroup.append("g")
-            .attr("class", "actor-size-legend")
-            .attr("transform", `translate(${this.width - 150}, ${this.height - 150})`);
-
-        const exampleCounts = [1, 5, 20]; // adjust as needed
-        exampleCounts.forEach((count, i) => {
-            const r = this.actorSizeScale(count);
-            legendGroup.append("circle")
-                .attr("cx", 0)
-                .attr("cy", -r * 2 * i)
-                .attr("r", r)
-                .attr("fill", "none")
-                .attr("stroke", "#555");
-
-            legendGroup.append("text")
-                .attr("x", 35)
-                .attr("y", -r * 2 * i)
-                .attr("alignment-baseline", "middle")
-                .style("font-size", "11px")
-                .text(`${count} titles`);
-        });
-
-        legendGroup.append("text")
-            .attr("x", 0)
-            .attr("y", -exampleCounts.length * 20 - 10)
-            .text("Actor filmography size")
-            .style("font-weight", "600")
-            .style("font-size", "12px");
-    }
 
     _onClick(d) {
         if (d.nodeType == "attribute") {

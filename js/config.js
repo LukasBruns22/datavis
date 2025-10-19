@@ -25,6 +25,15 @@ export const BINS = {
     ]
 };
 
+export const RATING_BINS = [
+    { label: "Awesome", color: "#19683A", domain: [9, 10] },
+    { label: "Great", color: "#29B263", domain: [7.5, 9] },
+    { label: "Good", color: "#F3CE3C", domain: [6, 7.5] },
+    { label: "Regular", color: "#F59C10", domain: [4, 6] },
+    { label: "Bad", color: "#E64D3D", domain: [2, 4] },
+    { label: "Garbage", color: "#5D3872", domain: [0, 2] }
+];
+
 export const GENRE_SHORT = {
     "Adventure": "ADV",
     "Animation": "ANI",

@@ -391,7 +391,6 @@ export class DonutChart {
         }
 
         // continuous attributes (runtime, year, rating)
-        //TODO: put in middle of chart
         if (currentLevel >= 2 && currentAttribute) {
             const baseGenre = this.stateManager.getCurrentPath()[GENRE_LEVEL_INDEX];
             const baseColor = d3.color(this.stateManager.getGenreColorScale()(baseGenre));

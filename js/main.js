@@ -8,9 +8,18 @@ import { RatingHeatmap } from "./ratingHeatmap.js";
 import { StateManager } from "./stateManager.js";
 import { DataProcessor } from "./dataProcessor.js";
 import { HIERARCHY_LEVELS } from "./config.js";
+import { Header } from "./header.js";
+
+/* 
+TODOS:
+- make tooltips consistent (use tooltip manager)
+- add dropdown to header and make dropdown work with jumping to attributes (skip certain filter levels)
+- render path breadcrumbs in header and make them clickable (remove breadcrumbs then from other charts)
+- if space, move also doghnut color scale to header, as colors are used by all charts
+- check alignments
+*/
 
 
-// global variables for charts
 let correlationPlot, actorAttributeNetwork, donutChart, ratingHeatmap;
 
 window.scaledFont = function(px) {
@@ -25,6 +34,9 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
     const dataProcessor = new DataProcessor(data, stateManager);
     stateManager.setDataProcessor(dataProcessor);
     const processor = stateManager.getDataProcessor();
+
+    const header = new Header("#header-container", dispatcher, stateManager);
+    header.render();
 
     const correlationData = processor.getCorrelationData();
     const donutData = processor.getDonutData();
