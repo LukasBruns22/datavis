@@ -10,6 +10,7 @@ export class Sidebar {
         this.dispatcher = dispatcher;
         this.tooltip = new TooltipManager(d3.select("body"));
         this.ratingBins = RATING_BINS;
+        this.currentAttribute = getCurrentAttributeLabel(this.stateManager)
     }
 
     /**
@@ -17,8 +18,6 @@ export class Sidebar {
      */
     render() {
         this.container.selectAll("*").remove(); // Clear container
-        const currentAttribute = getCurrentAttributeLabel(this.stateManager)
-
         // --- 1. Rating Scale ---
         this.container.append("h2")
             .text("Rating Scale");
@@ -49,8 +48,8 @@ export class Sidebar {
         });
 
         // --- 2. Legend ---
-        this.container.append("h2")
-            .text(`${currentAttribute} Legend`);
+        this.legendHeader = this.container.append("h2")
+            .text(`${this.currentAttribute} Legend`);
         
         this.legendSvg = this.container.append("svg")
             .attr("id", "legend-svg");
@@ -65,7 +64,9 @@ export class Sidebar {
     update() {
         // Clear previous legend
         this.legendGroup.selectAll("*").remove();
-        
+        this.currentAttribute = getCurrentAttributeLabel(this.stateManager)
+
+    
         const groupY = 20; // This is our top padding
         this.legendGroup.attr("transform", `translate(5, ${groupY})`);
         
@@ -81,6 +82,8 @@ export class Sidebar {
 
         // Get sidebar width for dynamic truncation
         const sidebarWidth = this.container.node().getBoundingClientRect().width;
+
+        this.legendHeader.text(currentLevel != HIERARCHY_LEVELS.length ? `${this.currentAttribute} Legend` : "Title Legend");
 
         // type
         if (currentLevel === 0) {
