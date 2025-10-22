@@ -16,7 +16,7 @@ export class TooltipManager {
     }
 
     show({ header, content, footer }, event) {
-        this.tooltip.transition().duration(200).style("opacity", 1);
+        // Set HTML first to calculate width, but keep it hidden
         const html = `
             ${header ? `<div style="
                 font-size: 14px; 
@@ -42,15 +42,44 @@ export class TooltipManager {
             </div>` : ""}
         `;
 
-        this.tooltip.html(html)
-            .style("opacity", 1)
-            .style("left", `${event.pageX + 15}px`)
+        this.tooltip.html(html);
+
+        // Get dimensions
+        const tooltipWidth = this.tooltip.node().offsetWidth;
+        const windowWidth = window.innerWidth;
+
+        // Calculate 'left' position
+        let left = event.pageX + 15;
+        
+        // Check if it goes off-screen to the right
+        if (left + tooltipWidth > windowWidth) {
+            // Flip it to the left side of the cursor
+            left = event.pageX - 15 - tooltipWidth; 
+        }
+
+        // Now apply styles and show
+        this.tooltip.transition().duration(200).style("opacity", 1);
+        this.tooltip
+            .style("left", `${left}px`)
             .style("top", `${event.pageY - 10}px`);
     }
 
     move(event) {
+        // Get dimensions
+        const tooltipWidth = this.tooltip.node().offsetWidth;
+        const windowWidth = window.innerWidth;
+
+        // Calculate 'left' position
+        let left = event.pageX + 15;
+
+        // Check if it goes off-screen to the right
+        if (left + tooltipWidth > windowWidth) {
+            // Flip it to the left side of the cursor
+            left = event.pageX - 15 - tooltipWidth;
+        }
+
         this.tooltip
-            .style("left", `${event.pageX + 15}px`)
+            .style("left", `${left}px`)
             .style("top", `${event.pageY - 10}px`);
     }
 
