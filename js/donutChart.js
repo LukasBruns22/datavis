@@ -64,9 +64,9 @@ export class DonutChart {
 
     update(donutData) {
         this.currentPath = this.stateManager.getCurrentPath();
-        const centerText = (this.currentPath.length < HIERARCHY_LEVELS.length)
-            ? HIERARCHY_LEVELS[this.currentPath.length]
-            : "Titles";
+        const centerText = this.currentPath.length > 0
+            ? this.currentPath[this.currentPath.length - 1]
+            : "Type";
         this.centerLabel.text(capitalize(formatLabels(centerText)));
         
         // --- _drawLegend() call removed ---
@@ -187,7 +187,7 @@ export class DonutChart {
         const labelSelection = labelsEnter.merge(labels)
             .transition().duration(1000)
             .attr("transform", labelTransform)
-            .attr("fill-opacity", d => (d.endAngle - d.startAngle > 0.15 ? 1 : 0))
+            .attr("fill-opacity", 1)
             .selection();
 
         labelSelection.each(function (d) {
@@ -198,15 +198,29 @@ export class DonutChart {
             const arcAngle = d.endAngle - d.startAngle;
             const arcLength = midRadius * arcAngle;
 
+            // Use 75% of arc length to ensure text doesn't overflow visually
+            const maxTextWidth = arcLength * 0.75;
+
             textEl.text(fullText);
+            let textWidth = this.getComputedTextLength();
 
-            const textWidth = this.getComputedTextLength();
-
-            if (textWidth > arcLength * 0.9) {
+            // Truncate text to fit
+            if (textWidth > maxTextWidth) {
                 let truncated = fullText;
-                while (truncated.length > 3 && this.getComputedTextLength() > arcLength * 0.9) {
+                // Keep reducing until it fits
+                while (truncated.length > 0) {
                     truncated = truncated.slice(0, -1);
                     textEl.text(truncated + "…");
+                    textWidth = this.getComputedTextLength();
+                    
+                    if (textWidth <= maxTextWidth) {
+                        break;
+                    }
+                }
+                
+                // Fallback: if even "..." is too long, just show "..."
+                if (textWidth > maxTextWidth) {
+                    textEl.text("…");
                 }
             }
         });
