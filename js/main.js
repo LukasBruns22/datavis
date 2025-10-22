@@ -80,17 +80,20 @@ d3.json("data/02_CPI-31-Dataset.json").then(function (data) {
 
 
     dispatcher.on("actorSelected", (actorInfo) => {
-        stateManager.setSelectedActor(actorInfo);
-        const currentAttribute = getCurrentAttributeLabel(stateManager)
+        if (stateManager.getCurrentPath().length < HIERARCHY_LEVELS.length) {
+            stateManager.setSelectedActor(actorInfo);
+            const currentAttribute = getCurrentAttributeLabel(stateManager)
+            const interval = ["Runtime", "Year", "Rating"].includes(currentAttribute) ? "Intervals" : ""
 
-        const heatmapData = dataProcessor.getHeatmapData();
-        ratingHeatmap.update(heatmapData);
+            const heatmapData = dataProcessor.getHeatmapData();
+            ratingHeatmap.update(heatmapData);
 
-        d3.select("#heatmap-title").text(
-            actorInfo
-                ? `Title Ratings per ${currentAttribute} featuring ${actorInfo.actorName}`
-                : `Title Ratings per ${currentAttribute}`
-        );
+            d3.select("#heatmap-title").text(
+                actorInfo
+                    ? `Title Ratings per ${currentAttribute} ${interval} featuring ${actorInfo.actorName}`
+                    : `Title Ratings per ${currentAttribute} ${interval}`
+            );
+        }
     });
 
     // initial draw

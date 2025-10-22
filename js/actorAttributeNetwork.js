@@ -71,12 +71,13 @@ export class ActorAttributeNetwork {
                 content: "Adjusts the balance between an actor's average rating (high α) and number of movies (low α) when selecting top actors."
             }, event);
         })
-        .on("mousemove", (event) => {
-            this.tooltip.move(event); 
-        })
-        .on("mouseout", () => {
-            this.tooltip.hide();
-        })
+            .on("mousemove", (event) => {
+                this.tooltip.move(event); // <-- ADDED
+            })
+            .on("mouseout", () => {
+                // --- MODIFIED to use TooltipManager ---
+                this.tooltip.hide();
+            })
     }
 
     update(data, attribute) {
@@ -254,7 +255,7 @@ export class ActorAttributeNetwork {
                         .forEach(([actor, count]) => {
                             actorHtml += `${actor} (${count})<br/>`;
                         });
-                    
+
                     content += `
                         <br/>
                         ${actorHtml}

@@ -37,8 +37,9 @@ export class RatingHeatmap {
         this.currentPath = this.stateManager.getCurrentPath()
         const tooltip = this.tooltip;
         const { attribute, columns } = heatmapData;
+        const interval = ["runtime", "year", "rating"].includes(attribute) ? "Intervals" : ""
 
-        d3.select("#heatmap-title").text(`Title Ratings per ${capitalize(formatLabels(attribute))}`);
+        d3.select("#heatmap-title").text(`Title Ratings per ${capitalize(formatLabels(attribute))} ${interval}`);
 
         const nCols = columns.length;
         const colWidth = (this.width - this.margin.left - this.margin.right) / nCols;
@@ -246,6 +247,9 @@ export class RatingHeatmap {
     renderEpisodeHeatmap(seriesTitle, episodes) {
         const margin = this.margin;
         const ratingColor = this.stateManager.getRatingColorScale();
+        const currentAttribute = HIERARCHY_LEVELS[this.stateManager.getCurrentPath().length]
+        const interval = ["runtime", "year", "rating"].includes(currentAttribute) ? "Intervals" : ""
+
 
         const seasons = Array.from(new Set(episodes.map(d => d.seasonNumber))).sort((a, b) => a - b);
         const maxEpisodes = d3.max(episodes, d => d.episodeNumber);
@@ -289,7 +293,7 @@ export class RatingHeatmap {
             .text("← Back")
             .on("click", () => {
                 this.goBackToMainHeatmap();
-                titleEl.text(`Title Ratings per ${capitalize(formatLabels(this.data.attribute))}`); // reset title
+                titleEl.text(`Title Ratings per ${capitalize(formatLabels(this.data.attribute))} ${interval}`); // reset title
             });
 
         const x = d3.scaleBand()

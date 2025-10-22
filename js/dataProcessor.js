@@ -200,7 +200,7 @@ export class DataProcessor {
         const currentLevel = path.length;
         const nextAttribute = HIERARCHY_LEVELS[currentLevel];
 
-        const maxHeatmapLevel = HIERARCHY_LEVELS.indexOf("runtime");
+        const maxHeatmapLevel = HIERARCHY_LEVELS.indexOf("rating");
         if (currentLevel > maxHeatmapLevel) return null;
 
         if (!nextAttribute) return null; 

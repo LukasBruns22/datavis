@@ -7,7 +7,6 @@ html, body {
     color: #333;
     display: flex;
     flex-direction: column; 
-    /* Default font-size is 16px, rem units are based on this */
 }
 
 header {
@@ -106,18 +105,17 @@ header {
 #legend-svg text,
 .legend-item text {
     fill: #f1f3f5 !important;
-    font-size: 0.75rem !important; /* 12px */
+    font-size: 0.75rem !important; 
     font-weight: 500 !important;
 }
 
-/* --- ADDED: Static Home Button Style --- */
 .home-button {
     background-color: #f8f9fa;
     color: #333333;
     border: 1px solid #dee2e6;
     border-radius: 6px;
     height: 28px;
-    line-height: 28px; /* Vertically center text */
+    line-height: 28px; 
     padding: 0 1rem;
     font-size: 12px;
     font-weight: 600;
