@@ -9,6 +9,7 @@ import { StateManager } from "./stateManager.js";
 import { DataProcessor } from "./dataProcessor.js";
 import { HIERARCHY_LEVELS } from "./config.js";
 import { Header } from "./header.js";
+import { getCurrentAttributeLabel } from "./helper.js";
 
 /* 
 TODOS:
@@ -22,12 +23,12 @@ TODOS:
 
 let correlationPlot, actorAttributeNetwork, donutChart, ratingHeatmap;
 
-window.scaledFont = function(px) {
-  const scale = window.devicePixelRatio || 1;
-  return `${px / scale}px`;
+window.scaledFont = function (px) {
+    const scale = window.devicePixelRatio || 1;
+    return `${px / scale}px`;
 };
 
-d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
+d3.json("data/02_CPI-31-Dataset.json").then(function (data) {
 
     const dispatcher = new Dispatcher();
     const stateManager = new StateManager();
@@ -54,6 +55,7 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
     dispatcher.on('pathChange', (pathInfo) => {
         const currentPath = pathInfo.path;
         stateManager.setPath(currentPath, HIERARCHY_LEVELS);
+        stateManager.setSelectedActor(null);
         const attributeToPlot = HIERARCHY_LEVELS[pathInfo.depth] || 'rating'
 
         const processor = stateManager.getDataProcessor();
@@ -77,6 +79,20 @@ d3.json("data/02_CPI-31-Dataset.json").then(function(data) {
         //correlationPlot.update(flattenedData, attribute, []);
         //sunburst.update([]);
         //actorAttributeNetwork.update(attribute);
+    });
+
+    dispatcher.on("actorSelected", (actorInfo) => {
+        stateManager.setSelectedActor(actorInfo);
+        const currentAttribute = getCurrentAttributeLabel(stateManager)
+
+        const heatmapData = dataProcessor.getHeatmapData();
+        ratingHeatmap.update(heatmapData);
+
+        d3.select("#heatmap-title").text(
+            actorInfo
+                ? `Title Ratings per ${currentAttribute} featuring ${actorInfo.actorName}`
+                : `Title Ratings per ${currentAttribute}`
+        );
     });
 
     // initial draw

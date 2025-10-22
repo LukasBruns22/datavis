@@ -77,6 +77,32 @@ export class StateManager {
         this.topGenres = topGenres;
     }
 
+    setSelectedActor(actorInfo) {
+        this.selectedActor = actorInfo;
+
+        if (!actorInfo) {
+            this.selectedActorTitles = null;
+            return;
+        }
+
+        const person = this.dataProcessor.getPersonsData().find(p => p.nconst === actorInfo.nconst);
+
+        if (person) {
+            const titles = new Set([
+                ...(person.knownForTitles ?? []),
+                ...(person.jobs ?? [])
+            ]);
+
+            this.selectedActorTitles = Array.from(titles);
+        } else {
+            this.selectedActorTitles = [];
+        }
+    }
+
+    getSelectedActorTitles() {
+        return this.selectedActorTitles || [];
+    }
+
     /**
      * Applies the current filters to a dataset.
      * @param {object[]} data - The array of data points to filter.

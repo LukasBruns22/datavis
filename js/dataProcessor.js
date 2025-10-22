@@ -125,6 +125,10 @@ export class DataProcessor {
         return this.flattened;
     }
 
+    getPersonsData() {
+        return this.rawPersons;
+    }
+
     // get data filtered by current path (["movie", "Drama", "2000-2004"])
     getFilteredData() {
         return this.stateManager.applyFilters(this.getFlattenedData());
@@ -202,10 +206,16 @@ export class DataProcessor {
         if (!nextAttribute) return null; 
 
         const useFlattened = ["genre", "runtime", "year"].includes(nextAttribute);
-        const data = useFlattened
+        let data = useFlattened
             ? this.getFilteredData()
             : this.getFilteredUnflattenedData();
         const bins = BINS[nextAttribute];
+
+        const selectedActorTitles = this.stateManager.getSelectedActorTitles();
+
+        if (selectedActorTitles && selectedActorTitles.length > 0) {
+            data = data.filter(d => selectedActorTitles.includes(d.tconst));
+        }
 
         const grouped = d3.group(data, d => {
             if (bins) {

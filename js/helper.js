@@ -97,3 +97,10 @@ export function groupByAttribute(data, attribute) {
     if (attribute === "rating") return d3.group(data, d => getRatingBin(d.rating));
     return d3.group(data, d => d[attribute]);
 }
+
+export function getCurrentAttributeLabel(stateManager) {
+    const currentPath = stateManager.getCurrentPath();
+    const currentAttribute = HIERARCHY_LEVELS[currentPath.length]
+
+    return capitalize(currentAttribute)
+}

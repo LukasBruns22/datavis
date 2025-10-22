@@ -137,6 +137,7 @@ export class ActorAttributeNetwork {
             const avgRating = d3.mean(ratings);
             const actorNode = {
                 id: person.primaryName,
+                nconst: person.nconst,
                 nodeType: "actor",
                 avgRating,
                 value: relatedTitles.length,
@@ -422,6 +423,11 @@ export class ActorAttributeNetwork {
     _highlightActorConnections(actorNode) {
         const isAlreadyHighlighted = this.highlightedActor === actorNode.id;
 
+        this.dispatcher.emit("actorSelected", {
+            nconst: actorNode.nconst,
+            actorName: actorNode.id
+        });
+
         if (isAlreadyHighlighted) {
             this.chartGroup.selectAll(".node")
                 .transition().duration(200)
@@ -437,6 +443,11 @@ export class ActorAttributeNetwork {
                 .style("opacity", 1)
 
             this.highlightedActor = null;
+
+            if (this.dispatcher) {
+                this.dispatcher.emit("actorSelected", null);
+            }
+
             return;
         }
 
