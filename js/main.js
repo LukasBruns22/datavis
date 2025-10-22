@@ -9,7 +9,7 @@ import { StateManager } from "./stateManager.js";
 import { DataProcessor } from "./dataProcessor.js";
 import { HIERARCHY_LEVELS } from "./config.js";
 import { Header } from "./header.js";
-import { Sidebar } from "./sidebar.js"; // <-- IMPORT SIDEBAR
+import { Sidebar } from "./sidebar.js";
 import { getCurrentAttributeLabel } from "./helper.js";
 
 /* TODOS:
@@ -80,13 +80,6 @@ d3.json("data/02_CPI-31-Dataset.json").then(function (data) {
         sidebar.update(); // <-- UPDATE SIDEBAR LEGEND
     });
 
-    dispatcher.on('jumpToAttribute', (attribute) => {
-        const attributeName = attribute.charAt(0).toUpperCase() + attribute.slice(1);
-        d3.select("#correlation-title").text(`Rating vs ${attributeName}`);
-        //correlationPlot.update(flattenedData, attribute, []);
-        //sunburst.update([]);
-        //actorAttributeNetwork.update(attribute);
-    });
 
     dispatcher.on("actorSelected", (actorInfo) => {
         stateManager.setSelectedActor(actorInfo);

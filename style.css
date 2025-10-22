@@ -194,12 +194,6 @@ header {
 }
 
 
-#middle-column .chart-container:first-child {
-  flex: 0 0 auto;       
-  align-items: center; 
-  justify-content: center;
-  padding: 10px 0;    
-}
 
 #dropdown-container {
   display: inline-flex;

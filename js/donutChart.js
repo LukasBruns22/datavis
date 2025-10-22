@@ -64,9 +64,9 @@ export class DonutChart {
 
     update(donutData) {
         this.currentPath = this.stateManager.getCurrentPath();
-        const centerText = this.currentPath.length > 0
-            ? this.currentPath[this.currentPath.length - 1]
-            : "Type";
+        const centerText = (this.currentPath.length < HIERARCHY_LEVELS.length)
+            ? HIERARCHY_LEVELS[this.currentPath.length]
+            : "Titles";
         this.centerLabel.text(capitalize(formatLabels(centerText)));
         
         // --- _drawLegend() call removed ---

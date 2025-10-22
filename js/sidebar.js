@@ -1,7 +1,7 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 import { TooltipManager } from "./tooltipManager.js";
 import { RATING_BINS, HIERARCHY_LEVELS, GENRE_LEVEL_INDEX, BINS } from "./config.js";
-import { getColor, capitalize, formatLabels } from "./helper.js";
+import { getColor, capitalize, formatLabels, getCurrentAttributeLabel } from "./helper.js";
 
 export class Sidebar {
     constructor(selector, stateManager, dispatcher) {
@@ -17,6 +17,7 @@ export class Sidebar {
      */
     render() {
         this.container.selectAll("*").remove(); // Clear container
+        const currentAttribute = getCurrentAttributeLabel(this.stateManager)
 
         // --- 1. Rating Scale ---
         this.container.append("h2")
@@ -49,7 +50,7 @@ export class Sidebar {
 
         // --- 2. Legend ---
         this.container.append("h2")
-            .text("Legend");
+            .text(`${currentAttribute} Legend`);
         
         this.legendSvg = this.container.append("svg")
             .attr("id", "legend-svg");

@@ -115,6 +115,8 @@ export class StateManager {
             const filterLabel = this.filters[key];
             if (!filterLabel) continue;
 
+            if (filterLabel.startsWith("All")) continue;
+
             const bin = BINS[key]?.find(b => b.label === filterLabel);
 
             filtered = filtered.filter(d => {
