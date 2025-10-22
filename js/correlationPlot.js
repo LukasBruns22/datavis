@@ -7,7 +7,11 @@ export class CorrelationPlot {
         this.data = initialData;
         this.stateManager = stateManager
         this.dispatcher = dispatcher; // Store the dispatcher
-        this.margin = { top: 70, right: 15, bottom: 45, left: 25 };
+        
+        // --- MODIFIED: Changed left margin ---
+        // Left: 60 -> 50 (to shift plot left)
+        this.margin = { top: 20, right: 20, bottom: 40, left: 50 };
+
         this.showTrendLine = false;
         this.currentPath = []; // Track the drill-down path
         this.hierarchyLevels = ['type', 'genre', 'year', 'runtime']; // Define hierarchy
@@ -20,8 +24,6 @@ export class CorrelationPlot {
         this.chartGroup = this.svg.append("g");
         this.xAxisGroup = this.chartGroup.append("g").attr("class", "x-axis");
         this.yAxisGroup = this.chartGroup.append("g").attr("class", "y-axis");
-
-        this.navigationGroup = this.svg.append("g").attr("class", "navigation-group");
 
         // Enhanced axis labels
         this.xAxisLabel = this.chartGroup.append("text")
@@ -107,90 +109,6 @@ export class CorrelationPlot {
             .style("z-index", 1000);
     }
 
-    _renderNavigation() {
-        if (!this.navigationGroup) return;
-        this.navigationGroup.selectAll("*").remove();
-
-        if (this.currentPath.length === 0) return;
-
-        const buttonPadding = { x: 8, y: 20 };
-        const buttonSpacing = 5;
-        const arrowSpacing = 20;
-
-        let xPos = 0;
-        const yPos = this.margin.top - 50;
-
-        this.currentPath.forEach((levelValue, i) => {
-
-            if (i <= 2) {
-
-                const label = `${capitalize(formatLabels(levelValue))}`;
-
-                const group = this.navigationGroup.append("g")
-                    .attr("transform", `translate(${xPos}, ${yPos})`)
-                    .style("cursor", "pointer");
-
-                const rect = group.append("rect")
-                    .attr("rx", 6).attr("ry", 6)
-                    .style("fill", "#f8f9fa").style("stroke", "#dee2e6")
-                    .style("stroke-width", 1).style("transition", "fill 0.2s ease-in-out");
-
-                const text = group.append("text")
-                    .text(label)
-                    .attr("text-anchor", "middle")
-                    .style("font-size", scaledFont(15))
-                    .style("font-weight", "600").style("fill", "#333333");
-
-                // Apply the uniform button size
-                const buttonWidth = 100
-                rect.attr("width", buttonWidth)
-                    .attr("height", this.uniformButtonHeight);
-
-                // Truncate text if it's too long for the button
-                const availableWidth = buttonWidth - (buttonPadding.x * 2);
-                let currentLabel = label;
-                if (text.node().getBBox().width > availableWidth) {
-                    while (text.node().getBBox().width > availableWidth && currentLabel.length > 3) {
-                        currentLabel = currentLabel.slice(0, -1);
-                        text.text(currentLabel + '...');
-                    }
-                }
-
-                text.attr("x", buttonWidth / 2)
-                    .attr("y", this.uniformButtonHeight / 2)
-                    .style("dominant-baseline", "middle");
-
-                group.on("click", () => {
-                    let newPath;
-                    // If the last breadcrumb (the current level) is clicked, go up one level.
-                    if (i === this.currentPath.length - 1) {
-                        newPath = this.currentPath.slice(0, i);
-                    } else {
-                        // Otherwise, go to the clicked breadcrumb's level.
-                        newPath = this.currentPath.slice(0, i + 1);
-                    }
-                    const newDepth = newPath.length;
-
-                    this.dispatcher.emit('pathChange', { path: newPath, depth: newDepth });
-                });
-
-                group
-                    .on("mouseover", () => rect.style("fill", "#e9ecef"))
-                    .on("mouseout", () => rect.style("fill", "#f8f9fa"));
-
-                xPos += buttonWidth + buttonSpacing;
-
-                if (i < 2) {
-                    this.navigationGroup.append("text")
-                        .text("→").attr("x", xPos).attr("y", yPos + this.uniformButtonHeight / 2)
-                        .style("dominant-baseline", "middle").style("font-size", "14px")
-                        .style("fill", "#333");
-                    xPos += arrowSpacing;
-                }
-            }
-        });
-    }
-
     resize() {
         const container = this.svg.node().parentElement;
         const containerWidth = container.getBoundingClientRect().width;
@@ -202,28 +120,25 @@ export class CorrelationPlot {
         this.chartGroup.attr("transform", `translate(${this.margin.left}, ${this.margin.top})`);
         this.xAxisGroup.attr("transform", `translate(0, ${this.height})`);
         this.xAxisLabel.attr("transform", `translate(${this.width / 2}, ${this.height + 40})`);
-        this.yAxisLabel.attr("transform", `translate(-40, ${this.height / 2}) rotate(-90)`);
-        this.trendToggleButton.attr("transform", `translate(${containerWidth - 100}, ${this.margin.top - 50})`);
+
+        // --- MODIFIED: Adjusted Y-axis label position ---
+        // -45 -> -35 to center it in the new 50px margin
+        this.yAxisLabel.attr("transform", `translate(-35, ${this.height / 2}) rotate(-90)`);
+        
+        this.trendToggleButton.attr("transform", `translate(${containerWidth - 100}, ${this.margin.top - 10})`);
     }
 
 
     // correlationPlot.js
     update(data, attribute) {
-        // Always update the navigation to show the user's current location.
         this.currentPath = this.stateManager.getCurrentPath()
-        this._renderNavigation();
 
-        // Check if the user has drilled past the 'runtime' level (depth > 3).
-        // If so, freeze the chart by keeping the runtime scatter plot visible.
         if (this.currentPath.length > 3) {
-            // Just update navigation but keep showing the last valid plot (runtime)
-            // Don't clear or redraw - this freezes the view
             return;
         }
         d3.select("#correlation-title").text(`Rating vs ${capitalize(formatLabels(attribute))}`);
         
 
-        // The rest of the function will now only run for the levels we want to plot.
         this.chartGroup.selectAll(".plot-element").remove();
         this.chartGroup.selectAll(".trend-line").remove();
         this.yAxisLabel.text("Rating");
@@ -264,8 +179,11 @@ export class CorrelationPlot {
         xAxis.tickValues(xTicks);
         this.xAxisGroup.transition().duration(500).call(xAxis);
         this.yAxisGroup.transition().duration(500).call(yAxis);
-        this.xAxisGroup.selectAll("text").style("font-size", scaledFont(13)).style("fill", "#333");
+        
+        // --- MODIFIED: Increased font size ---
+        this.xAxisGroup.selectAll("text").style("font-size", scaledFont(15)).style("fill", "#333");
         this.yAxisGroup.selectAll("text").style("font-size", scaledFont(13)).style("fill", "#333");
+        
         this.chartGroup.selectAll(".plot-element")
             .data(data)
             .join("circle")
@@ -327,7 +245,6 @@ export class CorrelationPlot {
             const count = values.length;
             const stdDev = d3.deviation(ratings);
 
-            // --- FIXED: Correct logic to find the dominant genre string ---
             const genreCounts = d3.rollup(values, v => v.length, d => d.genre);
             const dominantGenre = Array.from(genreCounts.entries())
                 .sort((a, b) => b[1] - a[1])[0][0];
@@ -339,7 +256,7 @@ export class CorrelationPlot {
 
             return {
                 key, min, q1, median, q3, max, mean, count, stdDev,
-                dominantGenre, // This is now a string, e.g., "Action"
+                dominantGenre, 
                 typeDistribution, values
             };
         });
@@ -369,7 +286,8 @@ export class CorrelationPlot {
         this.xAxisGroup.transition().duration(500).call(xAxis);
         this.yAxisGroup.transition().duration(500).call(yAxis);
 
-        this.xAxisGroup.selectAll("text").style("font-size", scaledFont(13)).style("fill", "#333");
+        // --- MODIFIED: Increased font size ---
+        this.xAxisGroup.selectAll("text").style("font-size", scaledFont(15)).style("fill", "#333");
         this.yAxisGroup.selectAll("text").style("font-size", scaledFont(13)).style("fill", "#333");
 
         const boxGroup = this.chartGroup.selectAll(".box-group")
@@ -494,7 +412,7 @@ export class CorrelationPlot {
         const lineData = [{ x: xDomain[0], y: slope * xDomain[0] + intercept }, { x: xDomain[1], y: slope * xDomain[1] + intercept }];
         this.chartGroup.append("line").attr("class", "trend-line")
             .attr("x1", this.xScale(lineData[0].x)).attr("y1", this.yScale(lineData[0].y))
-            .attr("x2", this.xScale(lineData[1].x)).attr("y2", this.yScale(lineData[1].y))
+            .attr("x2", this.xScale(lineData[1].x)).attr("y2", this.yScale(Linedata[1].y))
             .style("stroke", "#e74c3c").style("stroke-width", 8).style("stroke-dasharray", "5,5")
             .style("opacity", 0).transition().duration(500).style("opacity", 0.8);
     }
@@ -518,4 +436,3 @@ export class CorrelationPlot {
 
 
 }
-

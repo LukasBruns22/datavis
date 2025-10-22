@@ -1,6 +1,6 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 import { getColor, capitalize, formatLabels } from "./helper.js";
-import { HIERARCHY_LEVELS, BINS, GENRE_LEVEL_INDEX } from "./config.js";
+import { HIERARCHY_LEVELS } from "./config.js"; // BINS and GENRE_LEVEL_INDEX removed
 
 export class DonutChart {
     constructor(svgSelector, initialData, stateManager, dispatcher) {
@@ -15,7 +15,6 @@ export class DonutChart {
         this.hierarchyLevels = HIERARCHY_LEVELS;
 
         this._setupChartArea();
-        this._setupBreadcrumbs();
         this.update(initialData);
     }
 
@@ -70,20 +69,15 @@ export class DonutChart {
             .text("Type");
     }
 
-    _setupBreadcrumbs() {
-        this.breadcrumbGroup = this.svg.append("g")
-            .attr("class", "breadcrumb-group")
-            .attr("transform", `translate(${-this.radius}, ${-this.radius})`); // top-left margin
-    }
-
     update(donutData) {
         this.currentPath = this.stateManager.getCurrentPath();
         const centerText = this.currentPath.length > 0
             ? this.currentPath[this.currentPath.length - 1]
             : "Type";
         this.centerLabel.text(capitalize(formatLabels(centerText)));
-        this._renderBreadcrumbs();
-        this._drawLegend();
+        
+        // --- _drawLegend() call removed ---
+
         const total = d3.sum(donutData, d => d.count);
 
         const pie = d3.pie()
@@ -230,243 +224,7 @@ export class DonutChart {
             .style("opacity", 1);
     }
 
-    _renderBreadcrumbs() {
-        const pathArray = this.currentPath;
-
-        const buttonHeight = 30;
-        const buttonPadding = 8;
-        const arrowSpacing = 20;
-        const rowSpacing = 10;
-        const availableWidth = this.width - 10;
-
-        let xPos = 0;
-        let yPos = 0;
-
-        this.breadcrumbGroup.selectAll("*").remove();
-
-        pathArray.forEach((name, i) => {
-            const formattedName = capitalize(formatLabels(name))
-            const tempText = this.breadcrumbGroup.append("text").text(formattedName)
-                .style("font-size", "11px")
-                .style("font-weight", "600");
-            const textWidth = tempText.node().getBBox().width;
-            tempText.remove();
-            const buttonWidth = textWidth + 2 * buttonPadding;
-
-            const nextElementWidth = buttonWidth + (i < pathArray.length - 1 ? arrowSpacing : 0);
-            if (xPos > 0 && xPos + nextElementWidth > availableWidth) {
-                xPos = 0;
-                yPos += buttonHeight + rowSpacing;
-            }
-
-            const buttonGroup = this.breadcrumbGroup.append("g")
-                .attr("transform", `translate(${xPos}, ${yPos})`)
-                .style("cursor", "pointer")
-                .on("click", () => this._onBreadcrumbClick(i));
-
-            buttonGroup.append("rect")
-                .attr("width", buttonWidth)
-                .attr("height", buttonHeight)
-                .attr("rx", 8).attr("ry", 8)
-                .style("fill", "#f8f9fa").style("stroke", "#dee2e6");
-
-            buttonGroup.append("text")
-                .text(formattedName)
-                .attr("x", buttonPadding)
-                .attr("y", buttonHeight / 2)
-                .attr("dy", "0.35em")
-                .style("font-size", "11px")
-                .style("font-weight", "600")
-                .style("fill", "#333");
-
-            xPos += buttonWidth;
-
-            if (i < pathArray.length - 1) {
-                this.breadcrumbGroup.append("text")
-                    .text("→")
-                    .attr("x", xPos + arrowSpacing / 2)
-                    .attr("y", yPos + buttonHeight / 2)
-                    .attr("dy", "0.35em")
-                    .attr("text-anchor", "middle")
-                    .style("font-size", "11px")
-                    .style("fill", "#888");
-
-                xPos += arrowSpacing;
-            }
-        });
-    }
-
-
-
-    _onBreadcrumbClick(index) {
-        if (index === this.currentPath.length - 1) {
-            this.currentPath = this.currentPath.slice(0, index);
-        } else {
-            this.currentPath = this.currentPath.slice(0, index + 1);
-        }
-        const centerText = this.currentPath[this.currentPath.length - 1] || "Media"
-        this.centerLabel.text(capitalize(formatLabels(centerText)));
-
-        if (this.dispatcher) {
-            this.dispatcher.emit('pathChange', {
-                path: [...this.currentPath],
-                depth: this.currentPath.length,
-            });
-        }
-        this._renderBreadcrumbs();
-    }
-
-    _drawLegend() {
-        // Remove previous legend
-        if (!this.legendGroup) {
-            this.legendGroup = this.svg.append("g")
-                .attr("class", "legend-group")
-                .attr("transform", `translate(${-this.radius}, ${this.radius * 0.9})`);
-        }
-        this.legendGroup.selectAll("*").remove();
-
-        const currentLevel = this.stateManager.getCurrentPath().length;
-        const currentAttribute = HIERARCHY_LEVELS[currentLevel];
-        const legendItemSize = 18;
-        const legendSpacing = 5;
-
-        // type
-        if (currentLevel === 0) {
-            const typeData = ["movie", "tvSeries"];
-            const typeScale = this.stateManager.getTypeColorScale();
-
-            const items = this.legendGroup.selectAll(".legend-item")
-                .data(typeData)
-                .join("g")
-                .attr("class", "legend-item")
-                .attr("transform", (d, i) => `translate(0, ${i * (legendItemSize + legendSpacing)})`);
-
-            items.append("rect")
-                .attr("width", legendItemSize)
-                .attr("height", legendItemSize)
-                .attr("rx", 3).attr("ry", 3)
-                .style("fill", d => typeScale(d));
-
-            items.append("text")
-                .attr("x", legendItemSize + legendSpacing)
-                .attr("y", legendItemSize / 2)
-                .attr("dy", "0.35em")
-                .style("font-size", "10px")
-                .style("font-weight", "500")
-                .text(d => capitalize(formatLabels(d)));
-
-            return;
-        }
-
-        // genre
-        if (currentLevel === 1) {
-            const genreScale = this.stateManager.getGenreColorScale();
-            const genreData = [...this.stateManager.topGenres ?? [], "Other"];
-
-            const items = this.legendGroup.selectAll(".legend-item")
-                .data(genreData)
-                .join("g")
-                .attr("class", "legend-item")
-                .attr("transform", (d, i) => {
-                    const x = (i % 5) * (legendItemSize * 4);
-                    const y = Math.floor(i / 5) * (legendItemSize + legendSpacing);
-                    return `translate(${x}, ${y})`;
-                });
-
-            items.append("rect")
-                .attr("width", legendItemSize)
-                .attr("height", legendItemSize)
-                .attr("rx", 3).attr("ry", 3)
-                .style("fill", d => genreScale(d));
-
-            items.append("text")
-                .attr("x", legendItemSize + legendSpacing)
-                .attr("y", legendItemSize / 2)
-                .attr("dy", "0.35em")
-                .style("font-size", "10px")
-                .style("font-weight", "500")
-                .text(d => capitalize(formatLabels(d)));
-
-            return;
-        }
-
-        // continuous attributes (runtime, year, rating)
-        if (currentLevel >= 2 && currentAttribute) {
-            const baseGenre = this.stateManager.getCurrentPath()[GENRE_LEVEL_INDEX];
-            const baseColor = d3.color(this.stateManager.getGenreColorScale()(baseGenre));
-            const bins = BINS[currentAttribute];
-
-            if (!bins) return;
-
-            const colorScale = d3.scaleLinear()
-                .domain([0, bins.length - 1])
-                .range([-1, 1]);
-
-            const colorStops = bins.map((b, i) => {
-                const mod = colorScale(i);
-                const c = mod < 0 ? baseColor.darker(Math.abs(mod)) : baseColor.brighter(mod);
-                return c.formatHex();
-            });
-
-
-            // Draw gradient definition
-            const gradientId = `legend-gradient-${currentAttribute}`;
-            const defs = this.svg.select("defs").empty() ? this.svg.append("defs") : this.svg.select("defs");
-            defs.select(`#${gradientId}`).remove(); // remove old if exists
-
-            const gradient = defs.append("linearGradient")
-                .attr("id", gradientId)
-                .attr("x1", "0%").attr("x2", "100%")
-                .attr("y1", "0%").attr("y2", "0%");
-
-            // Instead of continuous interpolation, make discrete bands
-            const n = colorStops.length;
-            colorStops.forEach((color, i) => {
-                const start = (i / n) * 100;
-                const end = ((i + 1) / n) * 100;
-                gradient.append("stop")
-                    .attr("offset", `${start}%`)
-                    .attr("stop-color", color);
-                gradient.append("stop")
-                    .attr("offset", `${end}%`)
-                    .attr("stop-color", color);
-            });
-            const rectWidth = 300;
-            const rectHeight = 20;
-            const legendTranslation = 75;
-
-            this.legendGroup.append("rect")
-                .attr("transform", `translate(${legendTranslation}, ${0})`)
-                .attr("width", rectWidth)
-                .attr("height", rectHeight)
-                .style("fill", `url(#${gradientId})`)
-                .style("stroke", "#ccc")
-                .style("stroke-width", 1);
-
-            // Label ends
-            let startLabel = "", endLabel = "";
-            if (currentAttribute === "year") { startLabel = "Older"; endLabel = "Newer"; }
-            else if (currentAttribute === "runtime") { startLabel = "Shorter"; endLabel = "Longer"; }
-            else if (currentAttribute === "rating") { startLabel = "Lower Rating"; endLabel = "Higher Rating"; }
-
-            this.legendGroup.append("text")
-                .attr("transform", `translate(${legendTranslation}, ${0})`)
-                .text(startLabel)
-                .attr("y", rectHeight + 25)
-                .style("font-size", "10px")
-                .style("fill", "#333");
-
-            this.legendGroup.append("text")
-                .attr("transform", `translate(${legendTranslation}, ${0})`)
-                .text(endLabel)
-                .attr("x", rectWidth)
-                .attr("y", rectHeight + 25)
-                .attr("text-anchor", "end")
-                .style("font-size", "10px")
-                .style("fill", "#333");
-        }
-    }
-
+    // --- ENTIRE _drawLegend() METHOD REMOVED ---
 
     _moveTooltip(event) {
         this.tooltip
@@ -483,7 +241,6 @@ export class DonutChart {
         if (newPath.length <= HIERARCHY_LEVELS.length) {
             this.currentPath = newPath; // update current path
             this.centerLabel.text(capitalize(formatLabels(d.data.name)));
-            this._renderBreadcrumbs();
 
             if (this.dispatcher) {
                 this.dispatcher.emit('pathChange', {
@@ -502,7 +259,6 @@ export class DonutChart {
             ? this.currentPath[this.currentPath.length - 1]
             : "Type";
         this.centerLabel.text(capitalize(formatLabels(centerText)));
-        this._renderBreadcrumbs();
 
         if (this.dispatcher) {
             this.dispatcher.emit('pathChange', {

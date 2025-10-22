@@ -9,10 +9,10 @@ import { StateManager } from "./stateManager.js";
 import { DataProcessor } from "./dataProcessor.js";
 import { HIERARCHY_LEVELS } from "./config.js";
 import { Header } from "./header.js";
+import { Sidebar } from "./sidebar.js"; // <-- IMPORT SIDEBAR
 import { getCurrentAttributeLabel } from "./helper.js";
 
-/* 
-TODOS:
+/* TODOS:
 - make tooltips consistent (use tooltip manager)
 - add dropdown to header and make dropdown work with jumping to attributes (skip certain filter levels)
 - render path breadcrumbs in header and make them clickable (remove breadcrumbs then from other charts)
@@ -21,7 +21,7 @@ TODOS:
 */
 
 
-let correlationPlot, actorAttributeNetwork, donutChart, ratingHeatmap;
+let correlationPlot, actorAttributeNetwork, donutChart, ratingHeatmap, sidebar;
 
 window.scaledFont = function (px) {
     const scale = window.devicePixelRatio || 1;
@@ -38,6 +38,11 @@ d3.json("data/02_CPI-31-Dataset.json").then(function (data) {
 
     const header = new Header("#header-container", dispatcher, stateManager);
     header.render();
+
+    // --- INITIALIZE SIDEBAR ---
+    sidebar = new Sidebar("#left-sidebar", stateManager, dispatcher);
+    sidebar.render(); // Render static content
+    // Note: Initial legend update will happen in first 'pathChange' dispatch or manually
 
     const correlationData = processor.getCorrelationData();
     const donutData = processor.getDonutData();
@@ -71,6 +76,8 @@ d3.json("data/02_CPI-31-Dataset.json").then(function (data) {
         ratingHeatmap.update(heatmapData)
         donutChart.update(donutData);
         actorAttributeNetwork.update(actorAttributeNetworkData, attributeToPlot);
+        header._renderNavigation();
+        sidebar.update(); // <-- UPDATE SIDEBAR LEGEND
     });
 
     dispatcher.on('jumpToAttribute', (attribute) => {
@@ -97,6 +104,7 @@ d3.json("data/02_CPI-31-Dataset.json").then(function (data) {
 
     // initial draw
     correlationPlot.update(correlationData, 'type');
+    sidebar.update(); // <-- INITIAL LEGEND DRAW
     dropdown.render();
 
 }).catch(function (error) {
