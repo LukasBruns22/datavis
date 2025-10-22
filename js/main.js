@@ -13,7 +13,6 @@ import { Sidebar } from "./sidebar.js"; // <-- IMPORT SIDEBAR
 import { getCurrentAttributeLabel } from "./helper.js";
 
 /* TODOS:
-- make tooltips consistent (use tooltip manager)
 - add dropdown to header and make dropdown work with jumping to attributes (skip certain filter levels)
 - render path breadcrumbs in header and make them clickable (remove breadcrumbs then from other charts)
 - if space, move also doghnut color scale to header, as colors are used by all charts
@@ -23,9 +22,10 @@ import { getCurrentAttributeLabel } from "./helper.js";
 
 let correlationPlot, actorAttributeNetwork, donutChart, ratingHeatmap, sidebar;
 
+// --- MODIFIED: This function is fixed ---
+// It no longer divides by devicePixelRatio, which was making fonts tiny.
 window.scaledFont = function (px) {
-    const scale = window.devicePixelRatio || 1;
-    return `${px / scale}px`;
+    return `${px}px`;
 };
 
 d3.json("data/02_CPI-31-Dataset.json").then(function (data) {

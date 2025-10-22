@@ -8,23 +8,32 @@ export class RatingHeatmap {
         this.container = d3.select(containerSelector);
         this.svg = this.container.append("svg");
         this.stateManager = stateManager;
-        const { width, height } = this.svg.node().getBoundingClientRect();
+        
+        // --- MODIFIED: Remove initial height read ---
+        const { width } = this.svg.node().getBoundingClientRect();
         this.width = width;
-        this.height = height;
+        // this.height = height; // <-- REMOVED
+
         this.data = initalData
         this.dispatcher = dispatcher
         this.margin = { top: 40, right: 0, bottom: 0, left: 0 };
         this.currentPath = stateManager.getCurrentPath()
         this.tooltip = new TooltipManager(this.container);
-        this.resize()
+        this.resize() // Initial resize for width
         this.update(this.data)
     }
 
     resize() {
         const rect = this.container.node().getBoundingClientRect();
         this.width = rect.width - this.margin.left - this.margin.right;
-        this.height = rect.height - this.margin.top - this.margin.bottom;
-        this.svg.attr("viewBox", `0 0 ${rect.width} ${rect.height}`);
+
+        // --- MODIFIED: Don't read height here, it's dynamic ---
+        // this.height = rect.height - this.margin.top - this.margin.bottom; 
+
+        // --- MODIFIED: Set viewBox width, height will be set in update() ---
+        // Use current height (if any) or a default, this will be fixed by update()
+        const currentHeight = this.svg.attr("height") || 300; 
+        this.svg.attr("viewBox", `0 0 ${rect.width} ${currentHeight}`);
     }
 
     update(heatmapData) {
@@ -42,6 +51,22 @@ export class RatingHeatmap {
         const colWidth = (this.width - this.margin.left - this.margin.right) / nCols;
         const rowHeight = 40;
         const ratingColor = this.stateManager.getRatingColorScale();
+
+        // --- ADDED: Calculate required height ---
+        const maxTitles = columns.length > 0 ? d3.max(columns, col => col.titles.length) : 0;
+        // +1 for header row, +4 for padding
+        const requiredChartHeight = (maxTitles + 1) * rowHeight + 4; 
+        this.height = requiredChartHeight; // Set internal height
+        const totalSvgHeight = this.height + this.margin.top + this.margin.bottom;
+
+        // --- ADDED: Set SVG height, viewBox, and container height ---
+        this.svg
+            .attr("height", totalSvgHeight)
+            .attr("viewBox", `0 0 ${this.width + this.margin.left + this.margin.right} ${totalSvgHeight}`);
+        
+        // Set container height explicitly so flexbox: 0 1 auto; works
+        this.container.style("height", `${totalSvgHeight}px`);
+
 
         const g = this.svg.selectAll(".heatmap-g")
             .data([null])
@@ -228,6 +253,28 @@ export class RatingHeatmap {
     }
 
     renderEpisodeHeatmap(seriesTitle, episodes) {
+        const margin = this.margin;
+        const ratingColor = this.stateManager.getRatingColorScale();
+
+        // --- MODIFIED: Episode heatmap also needs to set its height ---
+        const seasons = Array.from(new Set(episodes.map(d => d.seasonNumber))).sort((a, b) => a - b);
+        const maxEpisodes = d3.max(episodes, d => d.episodeNumber);
+
+        const cellWidth = (this.width - margin.left - margin.right) / maxEpisodes;
+        const cellHeight = 35; // Set a fixed cell height for episodes
+        // +30px for top episode labels
+        const requiredChartHeight = (seasons.length * cellHeight) + 30; 
+        this.height = requiredChartHeight;
+        const totalSvgHeight = this.height + this.margin.top + this.margin.bottom;
+
+        // --- ADDED: Set SVG height, viewBox, and container height ---
+        this.svg
+            .attr("height", totalSvgHeight)
+            .attr("viewBox", `0 0 ${this.width + this.margin.left + this.margin.right} ${totalSvgHeight}`);
+        
+        // Set container height explicitly so flexbox respects it
+        this.container.style("height", `${totalSvgHeight}px`);
+
         const g = this.svg.selectAll(".heatmap-g")
             .data([null])
             .join("g")
@@ -236,8 +283,6 @@ export class RatingHeatmap {
 
         g.selectAll("*").remove();
 
-        const margin = this.margin;
-        const ratingColor = this.stateManager.getRatingColorScale();
 
         d3.select("#heatmap-title").text(`Episode Ratings for ${seriesTitle}`);
 
@@ -258,13 +303,6 @@ export class RatingHeatmap {
                 this.goBackToMainHeatmap();
                 titleEl.text(`Title Ratings per ${capitalize(formatLabels(this.data.attribute))}`); // reset title
             });
-
-
-        const seasons = Array.from(new Set(episodes.map(d => d.seasonNumber))).sort((a, b) => a - b);
-        const maxEpisodes = d3.max(episodes, d => d.episodeNumber);
-
-        const cellWidth = (this.width - margin.left - margin.right) / maxEpisodes;
-        const cellHeight = (this.height - margin.top - margin.bottom) / seasons.length;
 
         const x = d3.scaleBand()
             .domain(d3.range(1, maxEpisodes + 1))
@@ -338,6 +376,7 @@ export class RatingHeatmap {
                 this.tooltip.show({
                     header: d.originalTitle || d.title,
                     content: `Rating: <b>${d.averageRating.toFixed(1)}</b>`,
+                    // --- THIS IS THE FIX ---
                     footer: (d.seasonNumber && d.episodeNumber)
                         ? `S.${d.seasonNumber} - E.${d.episodeNumber}`
                         : null

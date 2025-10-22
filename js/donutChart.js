@@ -1,6 +1,7 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 import { getColor, capitalize, formatLabels } from "./helper.js";
 import { HIERARCHY_LEVELS } from "./config.js"; // BINS and GENRE_LEVEL_INDEX removed
+import { TooltipManager } from "./tooltipManager.js"; // <-- IMPORTED
 
 export class DonutChart {
     constructor(svgSelector, initialData, stateManager, dispatcher) {
@@ -13,6 +14,9 @@ export class DonutChart {
         this.dispatcher = dispatcher;
         this.currentPath = [];
         this.hierarchyLevels = HIERARCHY_LEVELS;
+        
+        // --- INSTANTIATED (on body for safe positioning) ---
+        this.tooltip = new TooltipManager(d3.select("body"));
 
         this._setupChartArea();
         this.update(initialData);
@@ -37,18 +41,7 @@ export class DonutChart {
             .innerRadius(this.innerRadius)
             .outerRadius(this.outerRadius);
 
-        // Tooltip
-        this.tooltip = d3.select("body").append("div")
-            .attr("class", "tooltip")
-            .style("position", "absolute")
-            .style("opacity", 0)
-            .style("pointer-events", "none")
-            .style("background-color", "rgba(0, 0, 0, 0.85)")
-            .style("color", "white")
-            .style("padding", "20px 30px")
-            .style("border-radius", "8px")
-            .style("font-size", "15px")
-            .style("max-width", "400px");
+        // --- REMOVED old tooltip creation ---
 
         // Transparent circle to capture center clicks
         this.centerCircle = this.svg.append("circle")
@@ -102,6 +95,7 @@ export class DonutChart {
             .attr("fill-opacity", 0.9)
             .attr("d", this.arc)
             .style("cursor", "pointer")
+            // --- MODIFIED to pass event ---
             .on("mouseover", (event, d) => this._showTooltip(event, d, total))
             .on("mousemove", (event) => this._moveTooltip(event))
             .on("mouseout", () => this._hideTooltip())
@@ -163,6 +157,7 @@ export class DonutChart {
         });
     }
 
+    // --- MODIFIED to use TooltipManager ---
     _showTooltip(event, d, total) {
         const isLeaf = this.currentPath.length >= HIERARCHY_LEVELS.length - 1;
         const path = this.stateManager.getCurrentPath();
@@ -180,20 +175,15 @@ export class DonutChart {
             const movie = movies.find(m => m.title === d.data.name);
 
             if (movie) {
-                this.tooltip
-                    .html(`
-                    <div style="font-size: 14px; font-weight: bold; color: #fff; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #555;">
-                        ${movie.title}
-                    </div>
-                    <div style="font-size: 12px; line-height: 1.6;">
-                        <strong>Rating:</strong> ${movie.rating?.toFixed(1) ?? "N/A"} / 10<br>
-                        <strong>Runtime:</strong> ${movie.runtime ? `${movie.runtime} min` : "N/A"}<br>
-                        <strong>Year:</strong> ${movie.year ?? "N/A"}<br>
-                        <strong>Genre:</strong> ${movie.genre ?? "N/A"}<br>
-                        <strong>Type:</strong> ${movie.type === "movie" ? "Movie" : "TV Show"}
-                    </div>
-                `)
-                    .style("opacity", 1);
+                const movieHeader = movie.title;
+                const movieContent = `
+                    <strong>Rating:</strong> ${movie.rating?.toFixed(1) ?? "N/A"} / 10<br>
+                    <strong>Runtime:</strong> ${movie.runtime ? `${movie.runtime} min` : "N/A"}<br>
+                    <strong>Year:</strong> ${movie.year ?? "N/A"}<br>
+                    <strong>Genre:</strong> ${movie.genre ?? "N/A"}<br>
+                    <strong>Type:</strong> ${movie.type === "movie" ? "Movie" : "TV Show"}
+                `;
+                this.tooltip.show({ header: movieHeader, content: movieContent }, event);
                 return;
             }
         }
@@ -208,35 +198,33 @@ export class DonutChart {
                <span style="font-weight: 500;">Path:</span> ${pathString}
            </div>`
             : "";
-
-        this.tooltip
-            .html(`
-            <div style="font-size: 14px; font-weight: bold; color: #fff; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #555;">
-                ${displayName}
-            </div>
+        
+        const header = displayName;
+        const content = `
             ${pathMarkup}
-            <div style="font-size: 12px; line-height: 1.6;">
-                <strong>Count:</strong> ${value.toLocaleString()}<br>
-                ${percentageOfParent ? `<strong>Fraction of Parent:</strong> ${percentageOfParent}%` : ""}
-            </div>
-            <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #555; font-style: italic; color: #999; font-size: 14px;">Click to drill down</div>
-        `)
-            .style("opacity", 1);
+            <strong>Count:</strong> ${value.toLocaleString()}<br>
+            ${percentageOfParent ? `<strong>Fraction of Parent:</strong> ${percentageOfParent}%` : ""}
+        `;
+        const footer = "Click to drill down";
+
+        this.tooltip.show({ header, content, footer }, event);
     }
 
     // --- ENTIRE _drawLegend() METHOD REMOVED ---
 
+    // --- MODIFIED to use TooltipManager ---
     _moveTooltip(event) {
-        this.tooltip
-            .style("left", `${event.pageX + 15}px`)
-            .style("top", `${event.pageY + 15}px`);
+        this.tooltip.move(event);
     }
 
+    // --- MODIFIED to use TooltipManager ---
     _hideTooltip() {
-        this.tooltip.transition().duration(300).style("opacity", 0);
+        this.tooltip.hide();
     }
 
     _onClick(d) {
+        this.tooltip.hide(); // <-- ADDED
+        
         const newPath = [...this.currentPath, d.data.name];
         if (newPath.length <= HIERARCHY_LEVELS.length) {
             this.currentPath = newPath; // update current path

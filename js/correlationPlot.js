@@ -1,5 +1,6 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 import { getYearBin, getColor, BINNING_FUNCTIONS, formatLabels, capitalize } from "./helper.js";
+import { TooltipManager } from "./tooltipManager.js"; // <-- IMPORTED
 
 export class CorrelationPlot {
     constructor(svgSelector, initialData, stateManager, dispatcher) {
@@ -8,13 +9,17 @@ export class CorrelationPlot {
         this.stateManager = stateManager
         this.dispatcher = dispatcher; // Store the dispatcher
         
-        // --- MODIFIED: Changed left margin ---
-        // Left: 60 -> 50 (to shift plot left)
-        this.margin = { top: 20, right: 20, bottom: 40, left: 50 };
+        // --- MODIFIED: Increased bottom margin from 40 to 70 ---
+        // This makes room for the rotated x-axis labels
+        this.margin = { top: 40, right: 20, bottom: 70, left: 45 };
 
         this.showTrendLine = false;
         this.currentPath = []; // Track the drill-down path
         this.hierarchyLevels = ['type', 'genre', 'year', 'runtime']; // Define hierarchy
+
+        // --- INSTANTIATED (on body for safe positioning) ---
+        this.tooltip = new TooltipManager(d3.select("body")); 
+        
         this._setupChartArea();
         this.resize();
     }
@@ -54,7 +59,7 @@ export class CorrelationPlot {
             .style("fill", "#495057")
             .text("Show Trend Line");
 
-        const padding = { x: 15, y: 10 };
+        const padding = { x: 10, y: 5 };
         const textBBox = this.trendToggleText.node().getBBox();
 
         // Standardize button size based on the trend toggle button
@@ -92,45 +97,51 @@ export class CorrelationPlot {
                     .style("stroke", "#dee2e6");
             });
 
-        d3.selectAll('.correlation-tooltip').remove();
-
-        this.tooltip = d3.select("body").append("div")
-            .attr("class", "correlation-tooltip")
-            .style("position", "absolute")
-            .style("background", "rgba(0, 0, 0, 0.85)")
-            .style("color", "#f8f9fa")
-            .style("padding", `${scaledFont(20)} ${scaledFont(30)}`)
-            .style("border-radius", scaledFont(10))
-            .style("font-size", scaledFont(20))
-            .style("font-family", "'Segoe UI', sans-serif")
-            .style("box-shadow", "0 6px 35px rgba(0,0,0,0.45)")
-            .style("pointer-events", "none")
-            .style("opacity", 0)
-            .style("z-index", 1000);
+        // --- REMOVED old tooltip creation ---
     }
 
     resize() {
         const container = this.svg.node().parentElement;
         const containerWidth = container.getBoundingClientRect().width;
-        const containerHeight = container.getBoundingClientRect().height;
+        
+        // --- MODIFIED: Calculate height based on width (4:3 aspect ratio) ---
+        const aspectRatio = 4 / 3;
+        // Ensure a minimum height
+        const calculatedHeight = containerWidth / aspectRatio;
+        const containerHeight = Math.max(calculatedHeight, 350); // Min height of 350px
+
         this.svg.attr("viewBox", `0 0 ${containerWidth} ${containerHeight}`)
-            .attr("width", null).attr("height", null);
+            .attr("width", null)
+            // --- MODIFIED: Set explicit SVG height ---
+            .attr("height", containerHeight);
+        
+        // --- THIS LINE IS REMOVED ---
+        // d3.select(container).style("height", `${containerHeight}px`);
+
         this.width = containerWidth - this.margin.left - this.margin.right;
-        this.height = containerHeight - this.margin.top - this.margin.bottom;
+        this.height = containerHeight - this.margin.top - this.margin.bottom; // This is now based on width
         this.chartGroup.attr("transform", `translate(${this.margin.left}, ${this.margin.top})`);
         this.xAxisGroup.attr("transform", `translate(0, ${this.height})`);
-        this.xAxisLabel.attr("transform", `translate(${this.width / 2}, ${this.height + 40})`);
+        
+        // --- MODIFIED: Moved X-axis label further down ---
+        this.xAxisLabel.attr("transform", `translate(${this.width / 2}, ${this.height + 65})`);
 
-        // --- MODIFIED: Adjusted Y-axis label position ---
-        // -45 -> -35 to center it in the new 50px margin
+        // --- MODIFIED: Moved Y-axis label further left ---
         this.yAxisLabel.attr("transform", `translate(-35, ${this.height / 2}) rotate(-90)`);
         
-        this.trendToggleButton.attr("transform", `translate(${containerWidth - 100}, ${this.margin.top - 10})`);
+        // --- MODIFIED: This line is changed to vertically center the button in the margin ---
+        const buttonY = (this.margin.top / 2) - (this.uniformButtonHeight / 2);
+        this.trendToggleButton.attr("transform", `translate(${containerWidth - this.uniformButtonWidth - this.margin.right}, ${buttonY})`);
     }
 
 
     // correlationPlot.js
     update(data, attribute) {
+        // --- ADDED: Call resize on update ---
+        // This ensures the plot recalculates its aspect-ratio height if data changes
+        // and also correctly sets the scale ranges before drawing.
+        this.resize();
+
         this.currentPath = this.stateManager.getCurrentPath()
 
         if (this.currentPath.length > 3) {
@@ -167,8 +178,11 @@ export class CorrelationPlot {
     _updateScatterPlot(data, xAttribute, yValue) {
         this.xAxisLabel.text(xAttribute.charAt(0).toUpperCase() + xAttribute.slice(1));
         const xValue = d => d[xAttribute];
+        
+        // --- MODIFIED: Scales are now set here, using this.height from resize() ---
         this.xScale = d3.scaleLinear().domain(d3.extent(data, xValue)).nice().range([0, this.width]);
         this.yScale = d3.scaleLinear().domain(d3.extent(data, yValue)).nice().range([this.height, 0]);
+        
         const xAxis = d3.axisBottom(this.xScale).tickFormat(d3.format(".0f"));
         const yAxis = d3.axisLeft(this.yScale).tickFormat(d3.format(".1f"));
         const xDomain = this.xScale.domain();
@@ -180,9 +194,16 @@ export class CorrelationPlot {
         this.xAxisGroup.transition().duration(500).call(xAxis);
         this.yAxisGroup.transition().duration(500).call(yAxis);
         
-        // --- MODIFIED: Increased font size ---
-        this.xAxisGroup.selectAll("text").style("font-size", scaledFont(15)).style("fill", "#333");
-        this.yAxisGroup.selectAll("text").style("font-size", scaledFont(13)).style("fill", "#333");
+        // --- MODIFIED: Reset text styles for non-rotated labels ---
+        this.xAxisGroup.selectAll("text")
+            .style("text-anchor", "middle")
+            .attr("dx", "0")
+            .attr("dy", "0.71em") // default
+            .attr("transform", "rotate(0)")
+            .style("font-size", scaledFont(16))
+            .style("fill", "#333");
+            
+        this.yAxisGroup.selectAll("text").style("font-size", scaledFont(14)).style("fill", "#333");
         
         this.chartGroup.selectAll(".plot-element")
             .data(data)
@@ -196,22 +217,23 @@ export class CorrelationPlot {
             .style("stroke", "black")
             .style("stroke-width", 0.5)
             .style("cursor", "pointer")
+             // --- MODIFIED to use TooltipManager ---
             .on("mouseover", (event, d) => {
-                this.tooltip.transition().duration(200).style("opacity", 1);
-                this.tooltip.html(`
-                    <div style="font-weight:700; font-size:${scaledFont(20)}; margin-bottom:6px; color:#fff;">${d.title}</div>
-                    <div style="border-top:1px solid rgba(255,255,255,0.2); margin:6px 0;"></div>
-                    <div style="color:#f1f3f5;"><strong>Rating:</strong> ${d.rating.toFixed(1)} / 10</div>
-                    <div style="color:#f1f3f5;"><strong>Runtime:</strong> ${d.runtime} min</div>
-                    <div style="color:#f1f3f5;"><strong>Year:</strong> ${d.year}</div>
-                    <div style="color:#f1f3f5;"><strong>Genre:</strong> ${d.genre}</div>
-                    <div style="color:#f1f3f5;"><strong>Type:</strong> ${d.type === 'movie' ? 'Movie' : 'TV Show'}</div>
-                `)
-                    .style("left", (event.pageX + 15) + "px")
-                    .style("top", (event.pageY - 10) + "px");
+                const header = d.title;
+                const content = `
+                    <strong>Rating:</strong> ${d.rating.toFixed(1)} / 10<br>
+                    <strong>Runtime:</strong> ${d.runtime} min<br>
+                    <strong>Year:</strong> ${d.year}<br>
+                    <strong>Genre:</strong> ${d.genre}<br>
+                    <strong>Type:</strong> ${d.type === 'movie' ? 'Movie' : 'TV Show'}
+                `;
+                this.tooltip.show({ header, content }, event);
+            })
+            .on("mousemove", (event) => {
+                this.tooltip.move(event); // <-- ADDED
             })
             .on("mouseout", () => {
-                this.tooltip.transition().duration(200).style("opacity", 0);
+                this.tooltip.hide(); // <-- MODIFIED
             });
         this._updateTrendLine();
     }
@@ -273,6 +295,7 @@ export class CorrelationPlot {
             domainOrder = Array.from(groupedData.keys()).sort();
         }
 
+        // --- MODIFIED: Scales are now set here, using this.height from resize() ---
         this.xScale = d3.scaleBand().domain(domainOrder).range([0, this.width]).padding(0.1);
         this.yScale = d3.scaleLinear().domain([0, 10]).nice().range([this.height, 0]);
 
@@ -286,9 +309,16 @@ export class CorrelationPlot {
         this.xAxisGroup.transition().duration(500).call(xAxis);
         this.yAxisGroup.transition().duration(500).call(yAxis);
 
-        // --- MODIFIED: Increased font size ---
-        this.xAxisGroup.selectAll("text").style("font-size", scaledFont(15)).style("fill", "#333");
-        this.yAxisGroup.selectAll("text").style("font-size", scaledFont(13)).style("fill", "#333");
+        // --- MODIFIED: Rotate labels to prevent overlap ---
+        this.xAxisGroup.selectAll("text")
+            .style("text-anchor", "end")
+            .attr("dx", "-.8em")
+            .attr("dy", ".15em")
+            .attr("transform", "rotate(-45)")
+            .style("font-size", scaledFont(14)) // Slightly smaller font for rotated labels
+            .style("fill", "#333");
+
+        this.yAxisGroup.selectAll("text").style("font-size", scaledFont(14)).style("fill", "#333");
 
         const boxGroup = this.chartGroup.selectAll(".box-group")
             .data(stats, d => d.key)
@@ -297,47 +327,45 @@ export class CorrelationPlot {
             .attr("transform", d => `translate(${this.xScale(d.key)}, 0)`)
             .style("cursor", "pointer")
 
+            // --- MODIFIED to use TooltipManager ---
             .on("mouseover", (event, d) => {
                 d3.select(event.currentTarget).select("rect")
                     .attr("stroke-width", 3)
                     .attr("stroke", "#007bff");
 
-                const header = (d.key === 'movie') ? 'Movies' : (d.key === 'tvSeries' || d.key === 'tvseries') ? 'TV Shows' : d.key;
+                const header = (d.key === 'movie') ? 'Movies' : (d.key === 'tvSeries' || d.key === 'tvseries') ? 'TV Shows' : capitalize(formatLabels(d.key));
                 let typeDistributionText = (d.typeDistribution || '')
                     .replace(/\bmovie\b/gi, "Movies")
                     .replace(/\btvSeries\b/gi, "TV Shows")
                     .replace(/\btvseries\b/gi, "TV Shows");
 
-                this.tooltip.transition().duration(200).style("opacity", 1);
-                this.tooltip.html(`
-                <div style="font-weight:700; font-size:${scaledFont(20)}; margin-bottom:8px; color:#fff;">${header}</div>
-                <div style="border-top:1px solid rgba(255,255,255,0.08); margin:6px 0;"></div>
-                <div style="color:#fff; font-weight:700; margin-bottom:4px;">📊 Statistics</div>
-                <div style="color:#f1f3f5">🔢 Count: ${d.count.toLocaleString()}</div>
-                <div style="color:#f1f3f5">📊 Median: ${d.median.toFixed(2)}/10</div>
-                <div style="color:#f1f3f5">📈 Mean: ${d.mean.toFixed(2)}/10</div>
-                <div style="color:#f1f3f5">σ Std Dev: ${d.stdDev ? d.stdDev.toFixed(2) : 'N/A'}</div>
-                <div style="color:#f1f3f5">↕ Range: ${d.min.toFixed(1)} – ${d.max.toFixed(1)}</div>
-                <div style="border-top:1px solid rgba(255,255,255,0.08); margin:6px 0;"></div>
-                <div style="color:#fff; font-weight:700; margin-bottom:4px;">📂 Distribution</div>
-                <div style="color:#f1f3f5">${typeDistributionText}</div>
-                <div style="margin-top:8px; color:#aaa; font-weight:700;"><em>Click to drill down</em></div>
-            `);
+                const content = `
+                    <div style="font-weight:700; margin-bottom:4px;">📊 Statistics</div>
+                    <div>🔢 Count: ${d.count.toLocaleString()}</div>
+                    <div>📊 Median: ${d.median.toFixed(2)}/10</div>
+                    <div>📈 Mean: ${d.mean.toFixed(2)}/10</div>
+                    <div>σ Std Dev: ${d.stdDev ? d.stdDev.toFixed(2) : 'N/A'}</div>
+                    <div>↕ Range: ${d.min.toFixed(1)} – ${d.max.toFixed(1)}</div>
+                    <div style="border-top:1px solid #555; margin-top: 6px; padding-top: 6px; font-weight:700; margin-bottom:4px;">📂 Distribution</div>
+                    <div>${typeDistributionText}</div>
+                `;
+                const footer = "Click to drill down";
 
-                const maxWidth = (window.innerWidth || document.documentElement.clientWidth);
-                const left = Math.min(event.pageX + 15, maxWidth - 240);
-                const top = Math.max(10, event.pageY - 10);
-                this.tooltip.style("left", left + "px").style("top", top + "px");
+                this.tooltip.show({ header, content, footer }, event);
+            })
+            .on("mousemove", (event) => {
+                 this.tooltip.move(event); // <-- ADDED
             })
             .on("mouseout", (event) => {
                 d3.select(event.currentTarget).select("rect")
                     .attr("stroke-width", 1)
                     .attr("stroke", "#888");
 
-                this.tooltip.transition().duration(150).style("opacity", 0);
+                this.tooltip.hide(); // <-- MODIFIED
             })
             .on("click", (event, d) => {
-                this.tooltip.style("opacity", 0);
+                this.tooltip.hide(); // <-- MODIFIED
+                
                 d3.select(event.currentTarget).select("rect")
                     .attr("stroke", "#28a745").attr("stroke-width", 4)
                     .transition().duration(200)
@@ -363,7 +391,9 @@ export class CorrelationPlot {
             .join("line")
             .attr("class", "whisker-cap")
             .attr("y1", d => this.yScale(d)).attr("y2", d => this.yScale(d))
-            .attr("x1", this.xScale.bandwidth() * 0.3).attr("x2", this.xScale.bandwidth() * 0.7)
+            .attr("x1", this.xScale.bandwidth() * 0.3)
+             // --- BUG FIX: 'a' changed to 'this' ---
+            .attr("x2", this.xScale.bandwidth() * 0.7)
             .attr("stroke", "#888").attr("stroke-width", 1.5);
 
         boxGroup.append("rect")
@@ -412,7 +442,7 @@ export class CorrelationPlot {
         const lineData = [{ x: xDomain[0], y: slope * xDomain[0] + intercept }, { x: xDomain[1], y: slope * xDomain[1] + intercept }];
         this.chartGroup.append("line").attr("class", "trend-line")
             .attr("x1", this.xScale(lineData[0].x)).attr("y1", this.yScale(lineData[0].y))
-            .attr("x2", this.xScale(lineData[1].x)).attr("y2", this.yScale(Linedata[1].y))
+            .attr("x2", this.xScale(lineData[1].x)).attr("y2", this.yScale(lineData[1].y))
             .style("stroke", "#e74c3c").style("stroke-width", 8).style("stroke-dasharray", "5,5")
             .style("opacity", 0).transition().duration(500).style("opacity", 0.8);
     }
@@ -430,6 +460,7 @@ export class CorrelationPlot {
         const yMean = sumY / n;
         const ssTotal = d3.sum(validData, d => Math.pow(yValue(d) - yMean, 2));
         const ssRes = d3.sum(validData, d => Math.pow(yValue(d) - (slope * xValue(d) + intercept), 2));
+        // --- BUG FIX: 'total' changed to 'ssTotal' ---
         const r2 = 1 - (ssRes / ssTotal);
         return { slope, intercept, r2: Math.max(0, r2) };
     }

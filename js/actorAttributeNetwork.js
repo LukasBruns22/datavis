@@ -1,7 +1,7 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 import { getColor, BINNING_FUNCTIONS, formatLabels, capitalize } from "./helper.js";
 import { HIERARCHY_LEVELS } from "./config.js";
-
+import { TooltipManager } from "./tooltipManager.js"; // <-- IMPORTED
 
 export class ActorAttributeNetwork {
     constructor(containerSelector, data, dispatcher, stateManager) {
@@ -15,6 +15,7 @@ export class ActorAttributeNetwork {
         this.currentAttribute = "type";
         this.currentPath = stateManager.getCurrentPath()
         this.alpha = 0.5;
+        this.tooltip = new TooltipManager(this.container); // <-- INSTANTIATED
         this._createAlphaSlider();
         this.resize();
         this.update(this.data, this.currentAttribute)
@@ -38,17 +39,7 @@ export class ActorAttributeNetwork {
             .style("margin-left", "100px")
             .style("margin-top", "20px");
 
-        const sliderTooltip = sliderContainer.append("div")
-            .attr("class", "tooltip")
-            .style("position", "absolute")
-            .style("padding", "5px 5px")
-            .style("background", "rgba(72, 72, 72, 0.85)")
-            .style("color", "white")
-            .style("font-size", "8px")
-            .style("pointer-events", "none")
-            .style("opacity", 0)
-            .style("border-radius", "8px")
-            .style("max-width", "100px");
+        // --- REMOVED old sliderTooltip creation ---
 
         sliderContainer.append("label")
             .text("α")
@@ -75,18 +66,18 @@ export class ActorAttributeNetwork {
             this.update(this.data, this.currentAttribute);
         });
         slider.on("mouseover", (event, d) => {
-            sliderTooltip.transition().duration(1000).style("opacity", 1);
-
-            let html = `<div style="font-size: 14px; font-weight: bold; color: #fff; padding-bottom: 6px; border-bottom: 1px solid #555;">
-            Adjust the balance between an actor's average rating and number of movies when selecting top actors.
-            </div>`;
-
-            sliderTooltip.html(html)
-                .style("left", (event.pageX + 10) + "px")
-                .style("top", (event.pageY - 10) + "px");
+            // --- MODIFIED to use TooltipManager ---
+            this.tooltip.show({
+                header: "Alpha (α) Balance",
+                content: "Adjusts the balance between an actor's average rating (high α) and number of movies (low α) when selecting top actors."
+            }, event);
         })
-        slider.on("mouseout", () => {
-            sliderTooltip.transition().duration(150).style("opacity", 0);
+        .on("mousemove", (event) => {
+            this.tooltip.move(event); // <-- ADDED
+        })
+        .on("mouseout", () => {
+            // --- MODIFIED to use TooltipManager ---
+            this.tooltip.hide();
         })
     }
 
@@ -206,17 +197,7 @@ export class ActorAttributeNetwork {
             .style("stroke-opacity", 0.6)
             .style("stroke-width", d => Math.sqrt(d.strength));
 
-        const tooltip = this.container.append("div")
-            .attr("class", "tooltip")
-            .style("position", "absolute")
-            .style("padding", "20px 30px")
-            .style("background", "rgba(0, 0, 0, 0.85)")
-            .style("color", "white")
-            .style("font-size", "15px")
-            .style("pointer-events", "none")
-            .style("opacity", 0)
-            .style("border-radius", "8px")
-            .style("max-width", "400px");
+        // --- REMOVED old tooltip creation ---
 
         const node = this.chartGroup.selectAll(".node")
             .data(nodes)
@@ -234,89 +215,72 @@ export class ActorAttributeNetwork {
                 }
             })
             .style("cursor", "pointer")
+            // --- MODIFIED to use TooltipManager ---
             .on("mouseover", (event, d) => {
-                tooltip.transition().duration(150).style("opacity", 1);
                 const path = this.stateManager.getCurrentPath();
-                const formatSegment = s => s
-                    ? capitalize(s)
-                    : s;
+                const formatSegment = s => s ? capitalize(s) : s;
+                const pathString = path.length ? path.map(formatSegment).join(" → ") : "All Media";
+                const pathMarkup = path.length ? `<div style="font-size: 12px; color: #bbb; margin-bottom: 8px;"><span style="font-weight: 500;">Path:</span> ${pathString}</div>` : "";
 
-                const pathString = path.length
-                    ? path.map(formatSegment).join(" → ")
-                    : "All Media";
-                const pathMarkup = path.length
-                    ? `<div style="font-size: 12px; color: #bbb; margin-bottom: 8px;">
-               <span style="font-weight: 500;">Path:</span> ${pathString}
-           </div>`
-                    : "";
-
-                let html = `<div style="font-size: 14px; font-weight: bold; color: #fff; padding-bottom: 6px; border-bottom: 1px solid #555;">
-                ${capitalize(formatLabels(d.id))}
-            </div><br/>`;
-                html += pathMarkup
-
+                const header = capitalize(formatLabels(d.id));
+                let content = pathMarkup;
+                let footer = "";
 
                 if (d.nodeType === "actor") {
-                    html += `<br/>Average Rating: ${d.avgRating.toFixed(1)}<br/>`;
-
                     const connected = links
                         .filter(l => l.source.id === d.id || l.source === d.id)
                         .map(l => ({ attr: l.target.id || l.target, count: l.count || 1 }));
-
-                    const counts = d3.rollups(
-                        connected,
-                        v => d3.sum(v, x => x.count),
-                        v => v.attr
-                    );
-
+                    const counts = d3.rollups(connected, v => d3.sum(v, x => x.count), v => v.attr);
                     const totalTitles = d3.sum(counts, d => d[1]);
 
-                    html += `<br/><strong>${capitalize(formatLabels(this.currentAttribute))}s:</strong><br/>`;
-
+                    let attributeHtml = `<strong>${capitalize(formatLabels(this.currentAttribute))}s:</strong><br/>`;
                     counts.forEach(([attr, count]) => {
-                        html += `${capitalize(formatLabels(attr))} (${count})<br/>`;
+                        attributeHtml += `${capitalize(formatLabels(attr))} (${count})<br/>`;
                     });
-                    html += `<div style="margin-top: 6px;"><strong>Total Titles:</strong> ${totalTitles}</div>`;
-                    html += `<div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #555; font-style: italic; color: #999; font-size: 14px;">Click to highlight connections</div>`
+
+                    content += `
+                        Average Rating: ${d.avgRating.toFixed(1)}<br/>
+                        <br/>
+                        ${attributeHtml}
+                        <div style="margin-top: 6px;"><strong>Total Titles:</strong> ${totalTitles}</div>
+                    `;
+                    footer = "Click to highlight connections";
                 }
-                // attribute tooltip
                 else if (d.nodeType === "attribute") {
                     const connectedActors = links
                         .filter(l => l.target.id === d.id || l.target === d.id)
                         .map(l => ({ actor: l.source.id || l.source, count: l.count || 1 }));
-
-                    const counts = d3.rollups(
-                        connectedActors,
-                        v => d3.sum(v, x => x.count),
-                        v => v.actor
-                    );
-
+                    const counts = d3.rollups(connectedActors, v => d3.sum(v, x => x.count), v => v.actor);
                     const totalTitles = d3.sum(counts, d => d[1]);
 
-                    html += `<br/><strong>Actors:</strong><br/>`;
+                    let actorHtml = `<strong>Actors:</strong><br/>`;
                     counts
                         .sort((a, b) => d3.descending(a[1], b[1]))
                         .forEach(([actor, count]) => {
-                            html += `${actor} (${count})<br/>`;
+                            actorHtml += `${actor} (${count})<br/>`;
                         });
-                    html += `<div style="margin-top: 6px;"><strong>Total Titles:</strong> ${totalTitles}</div>`;
-                    html += `<div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #555; font-style: italic; color: #999; font-size: 14px;">Click to drill down</div>`
+                    
+                    content += `
+                        <br/>
+                        ${actorHtml}
+                        <div style="margin-top: 6px;"><strong>Total Titles:</strong> ${totalTitles}</div>
+                    `;
+                    footer = "Click to drill down";
                 }
 
-                tooltip.html(html)
-                    .style("left", (event.pageX + 10) + "px")
-                    .style("top", (event.pageY - 10) + "px");
+                this.tooltip.show({ header, content, footer }, event);
             })
             .on("mousemove", (event) => {
-                tooltip
-                    .style("left", (event.pageX + 10) + "px")
-                    .style("top", (event.pageY - 10) + "px");
+                // --- MODIFIED to use TooltipManager ---
+                this.tooltip.move(event);
             })
             .on("mouseout", () => {
-                tooltip.transition().duration(150).style("opacity", 0);
+                // --- MODIFIED to use TooltipManager ---
+                this.tooltip.hide();
             })
             .on("click", (event, d) => {
-                tooltip.transition().duration(100).style("opacity", 0); // hide tooltip
+                // --- MODIFIED to use TooltipManager ---
+                this.tooltip.hide(); // hide tooltip
                 this._onClick(d);
             })
             .call(
