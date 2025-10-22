@@ -13,7 +13,7 @@ export class Header {
         this.container = d3.select(selector);
         this.dispatcher = dispatcher;
         this.stateManager = stateManager;
-        this.uniformButtonHeight = 28;
+        this.uniformButtonHeight = 20;
         this.tooltip = new TooltipManager(d3.select("body"));
     }
 

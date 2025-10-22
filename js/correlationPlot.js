@@ -124,10 +124,10 @@ export class CorrelationPlot {
         this.xAxisGroup.attr("transform", `translate(0, ${this.height})`);
         
         // --- MODIFIED: Moved X-axis label further down ---
-        this.xAxisLabel.attr("transform", `translate(${this.width / 2}, ${this.height + 65})`);
+        this.xAxisLabel.attr("transform", `translate(${this.width / 2 - 10}, ${this.height + 65})`);
 
         // --- MODIFIED: Moved Y-axis label further left ---
-        this.yAxisLabel.attr("transform", `translate(-35, ${this.height / 2}) rotate(-90)`);
+        this.yAxisLabel.attr("transform", `translate(-40, ${this.height / 2}) rotate(-90)`);
         
         // --- MODIFIED: This line is changed to vertically center the button in the margin ---
         const buttonY = (this.margin.top / 2) - (this.uniformButtonHeight / 2);

@@ -205,7 +205,7 @@ export class Sidebar {
             let startLabel = "", endLabel = "";
             if (currentAttribute === "year") { startLabel = "Older"; endLabel = "Newer"; }
             else if (currentAttribute === "runtime") { startLabel = "Shorter"; endLabel = "Longer"; }
-            else if (currentAttribute === "rating") { startLabel = "Lower"; endLabel = "Higher"; }
+            else if (currentAttribute === "rating") { startLabel = "Lower Rating"; endLabel = "Higher Rating"; }
 
             this.legendGroup.append("text")
                 .text(startLabel)
@@ -267,14 +267,14 @@ export class Sidebar {
                 .style("stroke-width", 1);
 
             this.legendGroup.append("text")
-                .text("Lower")
+                .text("Lower Rating")
                 .attr("x", 0)
                 .attr("y", 0)
                 .attr("dy", "-0.5em")
                 .style("font-weight", 500);
 
             this.legendGroup.append("text")
-                .text("Higher")
+                .text("Higher Rating")
                 .attr("x", 0)
                 .attr("y", rectHeight)
                 .attr("dy", "1.2em")
