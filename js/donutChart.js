@@ -252,7 +252,7 @@ export class DonutChart {
         const value = d.data.count;
         const percentageOfParent = ((value / total) * 100).toFixed(2);
 
-        const displayName = capitalize(d.data.name);
+        const displayName = capitalize(formatLabels(d.data.name));
         const pathMarkup = path.length
             ? `<div style="font-size: 12px; color: #bbb; margin-bottom: 8px;">
                <span style="font-weight: 500;">Path:</span> ${pathString}
