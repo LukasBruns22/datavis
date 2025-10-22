@@ -51,12 +51,16 @@ export function getColor(attributeValue, stateManager) {
 
     // --- Last Level: Movies (no bins) ---
     const movies = stateManager.getCurrentTitles?.() || [];
-    const index = movies.findIndex(m => m.title === attributeValue);
-    const total = Math.max(movies.length, 1);
+    
+    // Sort movies by rating (lowest to highest) to ensure consistent color mapping
+    const sortedMovies = [...movies].sort((a, b) => (a.rating ?? 0) - (b.rating ?? 0));
+    
+    const index = sortedMovies.findIndex(m => m.title === attributeValue);
+    const total = Math.max(sortedMovies.length, 1);
 
     const brightnessScale = d3.scaleLinear()
         .domain([0, total - 1])
-        .range([-0.8, 0.8]); // tweak brightness range if needed
+        .range([-0.8, 0.8]); // index 0 (lowest rating) = darker, last index (highest rating) = brighter
 
     const modificationAmount = brightnessScale(index);
     return modificationAmount < 0

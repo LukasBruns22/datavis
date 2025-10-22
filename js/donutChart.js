@@ -73,11 +73,66 @@ export class DonutChart {
 
         const total = d3.sum(donutData, d => d.count);
 
+        // Sort data based on current hierarchy level
+        const currentLevel = this.currentPath.length;
+        const currentAttribute = HIERARCHY_LEVELS[currentLevel];
+        
+        let sortedData = [...donutData];
+        
+        // Sort by year (chronological)
+        if (currentAttribute === 'year') {
+            sortedData.sort((a, b) => {
+                const yearA = parseInt(a.name.split('-')[0]);
+                const yearB = parseInt(b.name.split('-')[0]);
+                return yearA - yearB;
+            });
+        }
+        // Sort by rating (low to high)
+        else if (currentAttribute === 'rating') {
+            const ratingOrder = [
+                "Below Average (<6.0)",
+                "Average (6.0-6.9)",
+                "Good (7.0-7.9)",
+                "Great (8.0-8.9)",
+                "Excellent (9.0-10.0)"
+            ];
+            sortedData.sort((a, b) => {
+                const indexA = ratingOrder.indexOf(a.name);
+                const indexB = ratingOrder.indexOf(b.name);
+                return indexA - indexB;
+            });
+        }
+        // Sort by runtime (short to long)
+        else if (currentAttribute === 'runtime') {
+            const runtimeOrder = [
+                "Short (< 45 min)",
+                "Standard (45-119 min)",
+                "Long (120-179 min)",
+                "Epic (>= 180 min)"
+            ];
+            sortedData.sort((a, b) => {
+                const indexA = runtimeOrder.indexOf(a.name);
+                const indexB = runtimeOrder.indexOf(b.name);
+                return indexA - indexB;
+            });
+        }
+        // Sort individual movies by rating (lowest to highest)
+        else if (currentLevel === HIERARCHY_LEVELS.length) {
+            const movies = this.stateManager.getCurrentTitles?.() || [];
+            sortedData.sort((a, b) => {
+                const movieA = movies.find(m => m.title === a.name);
+                const movieB = movies.find(m => m.title === b.name);
+                const ratingA = movieA?.rating ?? 0;
+                const ratingB = movieB?.rating ?? 0;
+                return ratingA - ratingB; // lowest to highest
+            });
+        }
+
         const pie = d3.pie()
             .sort(null)
             .value(() => 1); // equal-size arcs
 
-        const arcs = pie(donutData);
+        const arcs = pie(sortedData);
 
         // --- PATHS JOIN ---
         const paths = this.container.selectAll("path")

@@ -146,7 +146,7 @@ export class Sidebar {
         }
 
         // continuous attributes (runtime, year, rating)
-        else if (currentLevel >= 2 && currentAttribute) {
+        else if (currentLevel >= 2 && currentLevel < HIERARCHY_LEVELS.length && currentAttribute) {
             const baseGenre = this.stateManager.getCurrentPath()[GENRE_LEVEL_INDEX];
             const baseColor = d3.color(this.stateManager.getGenreColorScale()(baseGenre));
             const bins = BINS[currentAttribute];
@@ -215,6 +215,65 @@ export class Sidebar {
                 .attr("x", 0)
                 .attr("y", rectHeight) 
                 .attr("dy", "1.2em") 
+                .style("font-weight", 500);
+        }
+
+        // individual movies - show brightness gradient based on genre
+        else if (currentLevel === HIERARCHY_LEVELS.length) {
+            const baseGenre = this.stateManager.getCurrentPath()[GENRE_LEVEL_INDEX];
+            const baseColor = d3.color(this.stateManager.getGenreColorScale()(baseGenre));
+
+            if (!baseColor) {
+                this.legendSvg.attr("height", 0);
+                return;
+            }
+
+            const gradientId = 'legend-gradient-movies';
+            defs.select(`#${gradientId}`).remove();
+
+            const gradient = defs.append("linearGradient")
+                .attr("id", gradientId)
+                .attr("x1", "0%").attr("x2", "0%")
+                .attr("y1", "0%").attr("y2", "100%");
+
+            // Create smooth gradient from darker to brighter
+            // Matching the brightness range used in getColor: [-0.8, 0.8]
+            const numStops = 20;
+            for (let i = 0; i <= numStops; i++) {
+                const t = i / numStops;
+                const brightnessValue = -0.8 + (t * 1.6); // -0.8 to 0.8
+                
+                const color = brightnessValue < 0
+                    ? baseColor.darker(Math.abs(brightnessValue))
+                    : baseColor.brighter(brightnessValue);
+                
+                gradient.append("stop")
+                    .attr("offset", `${t * 100}%`)
+                    .attr("stop-color", color.formatHex());
+            }
+
+            const rectWidth = "100%";
+            const rectHeight = 150;
+
+            this.legendGroup.append("rect")
+                .attr("width", rectWidth)
+                .attr("height", rectHeight)
+                .style("fill", `url(#${gradientId})`)
+                .style("stroke", "#ccc")
+                .style("stroke-width", 1);
+
+            this.legendGroup.append("text")
+                .text("Lower")
+                .attr("x", 0)
+                .attr("y", 0)
+                .attr("dy", "-0.5em")
+                .style("font-weight", 500);
+
+            this.legendGroup.append("text")
+                .text("Higher")
+                .attr("x", 0)
+                .attr("y", rectHeight)
+                .attr("dy", "1.2em")
                 .style("font-weight", 500);
         }
         
