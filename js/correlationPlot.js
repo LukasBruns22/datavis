@@ -34,14 +34,14 @@ export class CorrelationPlot {
         this.xAxisLabel = this.chartGroup.append("text")
             .attr("class", "axis-label")
             .style("text-anchor", "middle")
-            .style("font-size", scaledFont(20))
+            .style("font-size", scaledFont(15))
             .style("font-weight", "bold")
             .style("fill", "#333");
 
         this.yAxisLabel = this.chartGroup.append("text")
             .attr("class", "axis-label")
             .style("text-anchor", "middle")
-            .style("font-size", scaledFont(20))
+            .style("font-size", scaledFont(15))
             .style("font-weight", "bold")
             .style("fill", "#333");
 
