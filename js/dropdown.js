@@ -32,9 +32,6 @@ export class DropdownControl {
             .append("option")
             .attr("value", d => d)
             .text(d => d.charAt(0).toUpperCase() + d.slice(1));
-
-        // When the dropdown changes, it now emits a generic event.
-        // It no longer knows or cares about the correlation plot or sunburst.
         dropdown.on("change", (event) => {
             const selectedAttribute = d3.select(event.currentTarget).property("value");
             this.dispatcher.emit('jumpToAttribute', selectedAttribute);

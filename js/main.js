@@ -22,8 +22,6 @@ import { getCurrentAttributeLabel } from "./helper.js";
 
 let correlationPlot, actorAttributeNetwork, donutChart, ratingHeatmap, sidebar;
 
-// --- MODIFIED: This function is fixed ---
-// It no longer divides by devicePixelRatio, which was making fonts tiny.
 window.scaledFont = function (px) {
     return `${px}px`;
 };
@@ -77,7 +75,7 @@ d3.json("data/02_CPI-31-Dataset.json").then(function (data) {
         donutChart.update(donutData);
         actorAttributeNetwork.update(actorAttributeNetworkData, attributeToPlot);
         header._renderNavigation();
-        sidebar.update(); // <-- UPDATE SIDEBAR LEGEND
+        sidebar.update();
     });
 
 
@@ -97,7 +95,7 @@ d3.json("data/02_CPI-31-Dataset.json").then(function (data) {
 
     // initial draw
     correlationPlot.update(correlationData, 'type');
-    sidebar.update(); // <-- INITIAL LEGEND DRAW
+    sidebar.update(); 
     dropdown.render();
 
 }).catch(function (error) {

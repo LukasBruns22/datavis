@@ -9,10 +9,8 @@ export class RatingHeatmap {
         this.svg = this.container.append("svg");
         this.stateManager = stateManager;
         
-        // --- MODIFIED: Remove initial height read ---
         const { width } = this.svg.node().getBoundingClientRect();
         this.width = width;
-        // this.height = height; // <-- REMOVED
 
         this.data = initalData
         this.dispatcher = dispatcher
@@ -27,11 +25,6 @@ export class RatingHeatmap {
         const rect = this.container.node().getBoundingClientRect();
         this.width = rect.width - this.margin.left - this.margin.right;
 
-        // --- MODIFIED: Don't read height here, it's dynamic ---
-        // this.height = rect.height - this.margin.top - this.margin.bottom; 
-
-        // --- MODIFIED: Set viewBox width, height will be set in update() ---
-        // Use current height (if any) or a default, this will be fixed by update()
         const currentHeight = this.svg.attr("height") || 300; 
         this.svg.attr("viewBox", `0 0 ${rect.width} ${currentHeight}`);
     }
@@ -52,14 +45,12 @@ export class RatingHeatmap {
         const rowHeight = 40;
         const ratingColor = this.stateManager.getRatingColorScale();
 
-        // --- ADDED: Calculate required height ---
         const maxTitles = columns.length > 0 ? d3.max(columns, col => col.titles.length) : 0;
         // +1 for header row, +4 for padding
         const requiredChartHeight = (maxTitles + 1) * rowHeight + 4; 
         this.height = requiredChartHeight; // Set internal height
         const totalSvgHeight = this.height + this.margin.top + this.margin.bottom;
 
-        // --- ADDED: Set SVG height, viewBox, and container height ---
         this.svg
             .attr("height", totalSvgHeight)
             .attr("viewBox", `0 0 ${this.width + this.margin.left + this.margin.right} ${totalSvgHeight}`);
@@ -256,18 +247,15 @@ export class RatingHeatmap {
         const margin = this.margin;
         const ratingColor = this.stateManager.getRatingColorScale();
 
-        // --- MODIFIED: Episode heatmap also needs to set its height ---
         const seasons = Array.from(new Set(episodes.map(d => d.seasonNumber))).sort((a, b) => a - b);
         const maxEpisodes = d3.max(episodes, d => d.episodeNumber);
 
         const cellWidth = (this.width - margin.left - margin.right) / maxEpisodes;
         const cellHeight = 35; // Set a fixed cell height for episodes
-        // +30px for top episode labels
         const requiredChartHeight = (seasons.length * cellHeight) + 30; 
         this.height = requiredChartHeight;
         const totalSvgHeight = this.height + this.margin.top + this.margin.bottom;
 
-        // --- ADDED: Set SVG height, viewBox, and container height ---
         this.svg
             .attr("height", totalSvgHeight)
             .attr("viewBox", `0 0 ${this.width + this.margin.left + this.margin.right} ${totalSvgHeight}`);
@@ -376,7 +364,6 @@ export class RatingHeatmap {
                 this.tooltip.show({
                     header: d.originalTitle || d.title,
                     content: `Rating: <b>${d.averageRating.toFixed(1)}</b>`,
-                    // --- THIS IS THE FIX ---
                     footer: (d.seasonNumber && d.episodeNumber)
                         ? `S.${d.seasonNumber} - E.${d.episodeNumber}`
                         : null

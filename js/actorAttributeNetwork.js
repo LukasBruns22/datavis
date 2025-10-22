@@ -1,7 +1,7 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 import { getColor, BINNING_FUNCTIONS, formatLabels, capitalize } from "./helper.js";
 import { HIERARCHY_LEVELS } from "./config.js";
-import { TooltipManager } from "./tooltipManager.js"; // <-- IMPORTED
+import { TooltipManager } from "./tooltipManager.js"; 
 
 export class ActorAttributeNetwork {
     constructor(containerSelector, data, dispatcher, stateManager) {
@@ -15,7 +15,7 @@ export class ActorAttributeNetwork {
         this.currentAttribute = "type";
         this.currentPath = stateManager.getCurrentPath()
         this.alpha = 0.5;
-        this.tooltip = new TooltipManager(this.container); // <-- INSTANTIATED
+        this.tooltip = new TooltipManager(this.container); 
         this._createAlphaSlider();
         this.resize();
         this.update(this.data, this.currentAttribute)
@@ -39,7 +39,6 @@ export class ActorAttributeNetwork {
             .style("margin-left", "100px")
             .style("margin-top", "20px");
 
-        // --- REMOVED old sliderTooltip creation ---
 
         sliderContainer.append("label")
             .text("α")
@@ -66,17 +65,16 @@ export class ActorAttributeNetwork {
             this.update(this.data, this.currentAttribute);
         });
         slider.on("mouseover", (event, d) => {
-            // --- MODIFIED to use TooltipManager ---
+           
             this.tooltip.show({
                 header: "Alpha (α) Balance",
                 content: "Adjusts the balance between an actor's average rating (high α) and number of movies (low α) when selecting top actors."
             }, event);
         })
         .on("mousemove", (event) => {
-            this.tooltip.move(event); // <-- ADDED
+            this.tooltip.move(event); 
         })
         .on("mouseout", () => {
-            // --- MODIFIED to use TooltipManager ---
             this.tooltip.hide();
         })
     }
@@ -197,8 +195,6 @@ export class ActorAttributeNetwork {
             .style("stroke-opacity", 0.6)
             .style("stroke-width", d => Math.sqrt(d.strength));
 
-        // --- REMOVED old tooltip creation ---
-
         const node = this.chartGroup.selectAll(".node")
             .data(nodes)
             .join("circle")
@@ -215,7 +211,6 @@ export class ActorAttributeNetwork {
                 }
             })
             .style("cursor", "pointer")
-            // --- MODIFIED to use TooltipManager ---
             .on("mouseover", (event, d) => {
                 const path = this.stateManager.getCurrentPath();
                 const formatSegment = s => s ? capitalize(s) : s;
@@ -271,16 +266,13 @@ export class ActorAttributeNetwork {
                 this.tooltip.show({ header, content, footer }, event);
             })
             .on("mousemove", (event) => {
-                // --- MODIFIED to use TooltipManager ---
                 this.tooltip.move(event);
             })
             .on("mouseout", () => {
-                // --- MODIFIED to use TooltipManager ---
                 this.tooltip.hide();
             })
             .on("click", (event, d) => {
-                // --- MODIFIED to use TooltipManager ---
-                this.tooltip.hide(); // hide tooltip
+                this.tooltip.hide(); 
                 this._onClick(d);
             })
             .call(

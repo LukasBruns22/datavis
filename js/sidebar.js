@@ -135,7 +135,7 @@ export class Sidebar {
                     const text = d3.select(this);
                     const labelText = capitalize(formatLabels(d));
                     
-                    const padding = 15; // 5px g-translate + 10px extra
+                    const padding = 15; 
                     const textX = legendItemSize + legendSpacing;
                     const availableWidth = sidebarWidth - textX - padding;
                     
@@ -192,8 +192,8 @@ export class Sidebar {
             
             const rectWidth = "100%"; 
             
-            // --- MODIFIED: Increased height ---
-            const rectHeight = 150; // <-- Increased from 100
+            
+            const rectHeight = 150; 
 
             this.legendGroup.append("rect")
                 .attr("width", rectWidth)
@@ -281,7 +281,6 @@ export class Sidebar {
                 .style("font-weight", 500);
         }
         
-        // Dynamic Height Calculation (no changes needed here)
         const bbox = this.legendGroup.node().getBBox();
         const totalHeight = groupY + bbox.y + bbox.height + 15; 
         

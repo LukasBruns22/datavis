@@ -28,7 +28,7 @@ export class Header {
             .style("flex-direction", "row")
             .style("align-items", "center")
             .style("justify-content", "flex-start")
-            .style("gap", "1rem") // REDUCED from 2rem to 1rem
+            .style("gap", "1rem") 
             .style("box-shadow", "0 2px 4px rgba(0,0,0,0.1)");
 
         headerDiv.append("h1")

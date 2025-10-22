@@ -1,7 +1,7 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 import { getColor, capitalize, formatLabels } from "./helper.js";
-import { HIERARCHY_LEVELS } from "./config.js"; // BINS and GENRE_LEVEL_INDEX removed
-import { TooltipManager } from "./tooltipManager.js"; // <-- IMPORTED
+import { HIERARCHY_LEVELS } from "./config.js"; 
+import { TooltipManager } from "./tooltipManager.js"; 
 
 export class DonutChart {
     constructor(svgSelector, initialData, stateManager, dispatcher) {
@@ -15,7 +15,6 @@ export class DonutChart {
         this.currentPath = [];
         this.hierarchyLevels = HIERARCHY_LEVELS;
         
-        // --- INSTANTIATED (on body for safe positioning) ---
         this.tooltip = new TooltipManager(d3.select("body"));
 
         this._setupChartArea();
@@ -40,8 +39,6 @@ export class DonutChart {
         this.arc = d3.arc()
             .innerRadius(this.innerRadius)
             .outerRadius(this.outerRadius);
-
-        // --- REMOVED old tooltip creation ---
 
         // Transparent circle to capture center clicks
         this.centerCircle = this.svg.append("circle")
@@ -68,8 +65,6 @@ export class DonutChart {
             ? this.currentPath[this.currentPath.length - 1]
             : "Type";
         this.centerLabel.text(capitalize(formatLabels(centerText)));
-        
-        // --- _drawLegend() call removed ---
 
         const total = d3.sum(donutData, d => d.count);
 
@@ -150,7 +145,6 @@ export class DonutChart {
             .attr("fill-opacity", 0.9)
             .attr("d", this.arc)
             .style("cursor", "pointer")
-            // --- MODIFIED to pass event ---
             .on("mouseover", (event, d) => this._showTooltip(event, d, total))
             .on("mousemove", (event) => this._moveTooltip(event))
             .on("mouseout", () => this._hideTooltip())
@@ -217,8 +211,6 @@ export class DonutChart {
                         break;
                     }
                 }
-                
-                // Fallback: if even "..." is too long, just show "..."
                 if (textWidth > maxTextWidth) {
                     textEl.text("…");
                 }
@@ -226,7 +218,6 @@ export class DonutChart {
         });
     }
 
-    // --- MODIFIED to use TooltipManager ---
     _showTooltip(event, d, total) {
         const isLeaf = this.currentPath.length >= HIERARCHY_LEVELS.length - 1;
         const path = this.stateManager.getCurrentPath();
@@ -278,21 +269,15 @@ export class DonutChart {
 
         this.tooltip.show({ header, content, footer }, event);
     }
-
-    // --- ENTIRE _drawLegend() METHOD REMOVED ---
-
-    // --- MODIFIED to use TooltipManager ---
     _moveTooltip(event) {
         this.tooltip.move(event);
     }
-
-    // --- MODIFIED to use TooltipManager ---
     _hideTooltip() {
         this.tooltip.hide();
     }
 
     _onClick(d) {
-        this.tooltip.hide(); // <-- ADDED
+        this.tooltip.hide();
         
         const newPath = [...this.currentPath, d.data.name];
         if (newPath.length <= HIERARCHY_LEVELS.length) {
