@@ -19,7 +19,7 @@ export class DataProcessor {
         const genreColorScale = d3.scaleOrdinal()
             .domain(topGenres)
             .range(d3.schemeTableau10)
-            .unknown("#cccccc");
+            .unknown("#5D3872");
 
         const typeColorScale = d3.scaleOrdinal()
             .domain(['tvSeries', 'movie'])
