@@ -4,7 +4,7 @@ An interactive, multi-view dashboard for exploring trends in film and TV
 using IMDb data. Built with D3.js and vanilla JavaScript during an exchange 
 semester at Instituto Superior Técnico (IST), Lisbon.
 
-![Dashboard overview](screenshot.png)
+![Dashboard overview](img/datavis.PNG)
 
 ## Features
 
