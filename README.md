@@ -39,9 +39,3 @@ filter or drill down.
 Static dataset derived from [IMDb's public data files](https://developer.imdb.com/non-commercial-datasets/). 
 Covers titles and cast from 2000–2024 across movies and TV shows.
 
-## Running Locally
-
-Since the project uses ES Modules, it needs to be served over HTTP 
-(not opened as a local file).
-
-```bash
